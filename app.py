@@ -21,3 +21,4 @@ if archivo:
 
         fig = px.bar(df, x=col_x, y=col_y, title=f"{col_y} por {col_x}")
         st.plotly_chart(fig, use_container_width=True)
+
