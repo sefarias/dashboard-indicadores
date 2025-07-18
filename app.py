@@ -50,7 +50,7 @@ try:
 
     # Gráfico de porcentaje YEAR_2022
     st.subheader("Porcentaje YEAR_2022 por comuna")
-    fig1, ax1 = plt.subplots()
+    fig1, ax1 = plt.subplots(figsize=(10, 6))  # Ajusta tamaño aquí
     df_filtrado_sorted = df_filtrado.sort_values("YEAR_2022", ascending=False)
     ax1.barh(df_filtrado_sorted["Nombre_comuna"], df_filtrado_sorted["YEAR_2022"], color="#1f77b4")
     ax1.invert_yaxis()
@@ -60,7 +60,7 @@ try:
 
     # Gráfico de variación porcentual Var_Porc
     st.subheader("Variación porcentual Var_Porc por comuna")
-    fig2, ax2 = plt.subplots()
+    fig2, ax2 = plt.subplots(figsize=(10, 6))  # Ajusta tamaño aquí
     df_filtrado_sorted_var = df_filtrado.sort_values("Var_Porc", ascending=False)
     ax2.barh(df_filtrado_sorted_var["Nombre_comuna"], df_filtrado_sorted_var["Var_Porc"], color="#ff7f0e")
     ax2.invert_yaxis()
