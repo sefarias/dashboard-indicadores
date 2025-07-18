@@ -51,7 +51,7 @@ try:
 
     # Gráfico de porcentaje YEAR_2022
 
-    height_val = st.slider("Ancho de las barras", min_value=0.1, max_value=1.0, value=0.5, step=0.05)
+    height_val =0.05
     fuente = fm.FontProperties(family='Arial', size=14)  # Cambia Arial y tamaño
 
     st.subheader("Porcentaje YEAR_2022 por comuna")
