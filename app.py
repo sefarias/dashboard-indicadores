@@ -5,7 +5,7 @@ import os
 import datetime
 
 # Ruta absoluta al archivo Excel
-archivo = "F:/Users/sfarias/Documents/Curso Python/.vscode/dashboard-indicadores/Datos/Dependencia_Region_13.xlsx"
+archivo = "Datos/Dependencia_Region_13.xlsx"
 
 # Mostrar rutas para depurar
 st.write("Directorio actual:", os.getcwd())
