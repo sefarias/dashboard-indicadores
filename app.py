@@ -84,10 +84,10 @@ try:
     ax2.set_ylabel("Comuna")
 
     # Cambiar tamaño de etiquetas eje Y
-    ax1.tick_params(axis='y', labelsize=14)  # Cambia 14 por el tamaño deseado
+    ax2.tick_params(axis='y', labelsize=14)  # Cambia 14 por el tamaño deseado
 
     # Alternativa para cambiar fuente y tamaño (más control):
-    etiquetas = ax1.get_yticklabels()
+    etiquetas = ax2.get_yticklabels()
     for etiqueta in etiquetas:
         etiqueta.set_fontsize(14)
         etiqueta.set_fontfamily('Arial')  # Cambia según la fuente que quieras
