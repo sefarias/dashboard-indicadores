@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 import os
 import datetime
 
@@ -51,6 +52,7 @@ try:
     # Gráfico de porcentaje YEAR_2022
 
     height_val = st.slider("Ancho de las barras", min_value=0.1, max_value=1.0, value=0.5, step=0.05)
+    fuente = fm.FontProperties(family='Arial', size=14)  # Cambia Arial y tamaño
 
     st.subheader("Porcentaje YEAR_2022 por comuna")
     fig1, ax1 = plt.subplots(figsize=(10, 6))  # Ajusta tamaño aquí
@@ -59,6 +61,15 @@ try:
     ax1.invert_yaxis()
     ax1.set_xlabel("Porcentaje YEAR_2022")
     ax1.set_ylabel("Comuna")
+    # Cambiar tamaño de etiquetas eje Y
+    ax1.tick_params(axis='y', labelsize=14)  # Cambia 14 por el tamaño deseado
+
+    # Alternativa para cambiar fuente y tamaño (más control):
+    etiquetas = ax1.get_yticklabels()
+    for etiqueta in etiquetas:
+        etiqueta.set_fontsize(14)
+        etiqueta.set_fontfamily('Arial')  # Cambia según la fuente que quieras
+
     st.pyplot(fig1)
 
     # Gráfico de variación porcentual Var_Porc
