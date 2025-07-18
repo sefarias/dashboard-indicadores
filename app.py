@@ -65,7 +65,7 @@ try:
     st.subheader("Variación porcentual Var_Porc por comuna")
     fig2, ax2 = plt.subplots(figsize=(10, 6))  # Ajusta tamaño aquí
     df_filtrado_sorted_var = df_filtrado.sort_values("Var_Porc", ascending=False)
-    ax2.barh(df_filtrado_sorted_var["Nombre_comuna"], df_filtrado_sorted_var["Var_Porc"], color="#ff7f0e", height=0.10)
+    ax2.barh(df_filtrado_sorted_var["Nombre_comuna"], df_filtrado_sorted_var["Var_Porc"], color="#ff7f0e", height=height_val)
     ax2.invert_yaxis()
     ax2.set_xlabel("Variación porcentual Var_Porc")
     ax2.set_ylabel("Comuna")
