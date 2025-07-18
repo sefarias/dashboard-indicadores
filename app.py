@@ -49,10 +49,13 @@ try:
     st.dataframe(df_filtrado[["Nombre_comuna", "YEAR_2022", "Var_Porc"]])
 
     # Gráfico de porcentaje YEAR_2022
+
+    height_val = st.slider("Ancho de las barras", min_value=0.1, max_value=1.0, value=0.5, step=0.05)
+
     st.subheader("Porcentaje YEAR_2022 por comuna")
     fig1, ax1 = plt.subplots(figsize=(10, 6))  # Ajusta tamaño aquí
     df_filtrado_sorted = df_filtrado.sort_values("YEAR_2022", ascending=False)
-    ax1.barh(df_filtrado_sorted["Nombre_comuna"], df_filtrado_sorted["YEAR_2022"], color="#1f77b4", height=0.10)
+    ax1.barh(df_filtrado_sorted["Nombre_comuna"], df_filtrado_sorted["YEAR_2022"], color="#1f77b4", height=height_val)
     ax1.invert_yaxis()
     ax1.set_xlabel("Porcentaje YEAR_2022")
     ax1.set_ylabel("Comuna")
