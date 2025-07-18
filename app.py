@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import datetime
 
-# Ruta absoluta al archivo Excel (ajusta si cambia)
+# Ruta absoluta al archivo Excel
 archivo = "F:/Users/sfarias/Documents/Curso Python/.vscode/dashboard-indicadores/Datos/Dependencia_Region_13.xlsx"
 
 # Mostrar rutas para depurar
@@ -18,9 +19,18 @@ def cargar_datos(path):
     return df
 
 try:
+    st.title("Dashboard por Provincia - Región Metropolitana")
+
+    # Botón para recargar los datos desde el Excel
+    if st.button("🔄 Recargar datos"):
+        st.cache_data.clear()
+        st.success("Datos recargados correctamente.")
+
+    # Cargar datos (con caché)
     df = cargar_datos(archivo)
 
-    st.title("Dashboard por Provincia - Región Metropolitana")
+    # Mostrar fecha y hora de carga
+    st.caption(f"📅 Última carga: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     # Eliminar filas que no son comunas
     df = df[~df["Nombre_comuna"].str.startswith("Provincia de")]
