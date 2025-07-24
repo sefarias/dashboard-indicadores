@@ -3,51 +3,51 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-# Mapeo de indicadores a carpetas y prefijos
+# Configuración inicial
+st.set_page_config(layout="wide")
+st.title("Dashboard de Brechas por Comuna")
+
+# Diccionario de indicadores y carpetas
 indicadores = {
-    "Brechas de Ingresos": ("BRECHAS_ING", "Brechas_Ingresos_Region_"),
-    "Brechas de Matrícula": ("BRECHAS_MAT", "Brechas_Matricula_Region_"),
-    "Brechas de Ocupación": ("BRECHAS_OCU", "Brechas_Ocupacion_Region_")
+    "Ingreso": "Datos/BRECHAS_ING",
+    "Matrícula": "Datos/BRECHAS_MAT",
+    "Ocupación": "Datos/BRECHAS_OCU"
 }
 
-# Sidebar para seleccionar el indicador y región
-st.sidebar.title("Dashboard de Indicadores de Brechas")
-indicador_seleccionado = st.sidebar.selectbox("Selecciona un indicador", list(indicadores.keys()))
-region_seleccionada = st.sidebar.selectbox("Selecciona una región", list(range(1, 17)))
+# Selección del indicador
+indicador = st.sidebar.selectbox("Selecciona el indicador", list(indicadores.keys()))
+carpeta = indicadores[indicador]
 
-# Ruta al archivo Excel correspondiente
-carpeta, prefijo = indicadores[indicador_seleccionado]
-archivo = f"Datos/{carpeta}/{prefijo}{region_seleccionada}.xlsx"
+# Obtener lista de regiones desde los archivos
+archivos = sorted([f for f in os.listdir(carpeta) if f.endswith(".xlsx")])
+regiones = [f.split("_")[-1].replace(".xlsx", "") for f in archivos]
+region_elegida = st.sidebar.selectbox("Selecciona la región", regiones)
 
-# Verificar si el archivo existe
-if not os.path.exists(archivo):
-    st.error(f"No se encontró el archivo: {archivo}")
-else:
-    # Leer datos
-    df = pd.read_excel(archivo)
-    
-    # Filtrar solo Total o ambos sexos (si quieres filtrar por Sexo también puedes agregar selectbox)
-    df_filtrado = df[df["Sexo"] == "Total"]
+# Construir la ruta del archivo correspondiente
+archivo_region = [f for f in archivos if f.endswith(f"_{region_elegida}.xlsx")][0]
+ruta_archivo = os.path.join(carpeta, archivo_region)
 
-    st.title(indicador_seleccionado)
-    st.subheader(f"Región {region_seleccionada} - Porcentaje YEAR_2022 por comuna")
+# Leer datos
+df = pd.read_excel(ruta_archivo)
 
-    # Ordenar por valor 2022
-    df_filtrado_sorted = df_filtrado.sort_values("YEAR_2022", ascending=False)
+# Filtrar y calcular brecha
+df_filtrado = df[df["Sexo"].isin(["Hombre", "Mujer"])]
+pivot = df_filtrado.pivot(index="Nombre_comuna", columns="Sexo", values="YEAR_2022").reset_index()
+pivot["Brecha_2022"] = pivot["Hombre"] - pivot["Mujer"]
+pivot = pivot.sort_values("Brecha_2022", ascending=False)
 
-    # Crear gráfico
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.barh(
-        df_filtrado_sorted["Nombre_comuna"],
-        df_filtrado_sorted["YEAR_2022"],
-        color="#1f77b4",
-        height=0.5
-    )
-    ax.invert_yaxis()
-    ax.set_xlabel("Porcentaje YEAR_2022", fontsize=12)
-    ax.set_ylabel("Comuna", fontsize=12)
+# Mostrar título dinámico
+st.subheader(f"Brecha {indicador.lower()} por comuna - Región {region_elegida}")
 
-    # Ajustar fuente de los ejes
-    ax.tick_params(axis='both', labelsize=10)
+# Gráfico
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.barh(pivot["Nombre_comuna"], pivot["Brecha_2022"], color="#1f77b4", height=0.5)
+ax.invert_yaxis()
+ax.set_xlabel("Brecha Hombre - Mujer")
+ax.set_ylabel("Comuna")
+ax.tick_params(axis='y', labelsize=12)
+ax.tick_params(axis='x', labelsize=12)
+st.pyplot(fig)
 
-    st.pyplot(fig)
+# Mostrar tabla
+st.dataframe(pivot, use_container_width=True)
