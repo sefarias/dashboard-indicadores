@@ -71,38 +71,56 @@ df_filtrado = df[columnas_presentes]
 st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
 st.dataframe(df_filtrado, use_container_width=True)
 
-# Crear segunda tabla: pivotear por sexo y crear columnas Hombre_2018, Mujer_2018, Hombre_2022, Mujer_2022
+# Segunda tabla con diagnósticos y pivot corregido
 if all(col in df.columns for col in ["Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2022"]):
+    st.write("Primeras filas antes de limpiar la columna 'Sexo':")
+    st.dataframe(df[["Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2022"]].head(10))
+
     # Limpiar y normalizar columna Sexo
     df['Sexo'] = df['Sexo'].astype(str).str.strip().str.capitalize()
 
+    st.write("Valores únicos en 'Sexo' después de limpieza:")
+    st.write(df['Sexo'].unique())
+
     # Filtrar sólo sexos esperados
-    df = df[df['Sexo'].isin(['Hombre', 'Mujer'])]
+    df_filtrado_sexo = df[df['Sexo'].isin(['Hombre', 'Mujer'])]
 
-    # Pivot con agregación sumando valores
-    df_pivot = df.pivot_table(
-        index=["Nombre_comuna"],
-        columns="Sexo",
-        values=["YEAR_2018", "YEAR_2022"],
-        aggfunc='sum',
-        fill_value=0
-    )
+    st.write(f"Cantidad de filas después de filtrar Sexo='Hombre' o 'Mujer': {len(df_filtrado_sexo)}")
 
-    # Renombrar columnas
-    new_columns = {}
-    for col in df_pivot.columns:
-        año = col[0].split('_')[1]  # '2018' o '2022'
-        sexo = col[1]  # Ya capitalizado
-        new_col_name = f"{sexo}_{año}"
-        new_columns[col] = new_col_name
+    if len(df_filtrado_sexo) == 0:
+        st.error("No hay datos para Sexo='Hombre' o 'Mujer' después del filtrado.")
+    else:
+        # Asegurar columnas YEAR_2018 y YEAR_2022 numéricas
+        for col in ["YEAR_2018", "YEAR_2022"]:
+            df_filtrado_sexo[col] = pd.to_numeric(df_filtrado_sexo[col], errors='coerce').fillna(0)
 
-    df_pivot.rename(columns=new_columns, inplace=True)
-    df_pivot = df_pivot.reset_index()
+        # Pivot con agregación sumando valores
+        df_pivot = df_filtrado_sexo.pivot_table(
+            index=["Nombre_comuna"],
+            columns="Sexo",
+            values=["YEAR_2018", "YEAR_2022"],
+            aggfunc='sum',
+            fill_value=0
+        )
 
-    columnas_orden = ["Nombre_comuna", "Hombre_2018", "Mujer_2018", "Hombre_2022", "Mujer_2022"]
-    columnas_orden_final = [c for c in columnas_orden if c in df_pivot.columns]
+        st.write("Columnas del DataFrame pivote antes de renombrar:")
+        st.write(df_pivot.columns.tolist())
 
-    st.subheader("Tabla Pivot: Valores por Sexo y Año")
-    st.dataframe(df_pivot[columnas_orden_final], use_container_width=True)
+        # Renombrar columnas
+        new_columns = {}
+        for col in df_pivot.columns:
+            año = col[0].split('_')[1]  # '2018' o '2022'
+            sexo = col[1]  # Ya capitalizado
+            new_col_name = f"{sexo}_{año}"
+            new_columns[col] = new_col_name
+
+        df_pivot.rename(columns=new_columns, inplace=True)
+        df_pivot = df_pivot.reset_index()
+
+        columnas_orden = ["Nombre_comuna", "Hombre_2018", "Mujer_2018", "Hombre_2022", "Mujer_2022"]
+        columnas_orden_final = [c for c in columnas_orden if c in df_pivot.columns]
+
+        st.subheader("Tabla Pivot: Valores por Sexo y Año")
+        st.dataframe(df_pivot[columnas_orden_final], use_container_width=True)
 else:
     st.warning("No se pueden pivotear los datos: faltan columnas necesarias ('Nombre_comuna', 'Sexo', 'YEAR_2018', 'YEAR_2022').")
