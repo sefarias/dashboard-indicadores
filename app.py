@@ -1,103 +1,80 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import plotly.express as px
 import os
-import matplotlib.pyplot as plt
 
-st.set_page_config(layout="wide")
+# Títulos
+st.title("Dashboard de Indicadores de Brechas de Género")
+st.markdown("Fuente: Subsecretaría de Evaluación Social")
 
-# Diccionario de indicadores
-indicadores = {
-    "Brechas de Ingresos": {
-        "carpeta": "Datos/BRECHAS_ING",
-        "prefijo": "Brechas_Ingresos_Region_"
-    },
-    "Brechas de Matrícula": {
-        "carpeta": "Datos/BRECHAS_MAT",
-        "prefijo": "Brechas_Matricula_Region_"
-    },
-    "Brechas de Ocupación": {
-        "carpeta": "Datos/BRECHAS_OCU",
-        "prefijo": "Brechas_Ocupacion_Region_"
-    }
-}
+# Ruta base donde están los archivos (ajusta si cambias de carpeta)
+ruta_base = "data"
 
-# --- NUEVA función: obtener nombres y códigos de todas las regiones ---
-def obtener_mapeo_regiones(info):
-    carpeta = info["carpeta"]
-    regiones_list = []
+# Cargar los nombres de regiones desde uno de los archivos
+df_nombres = pd.read_excel(os.path.join(ruta_base, "Brechas_Ingresos_Region_1.xlsx"))
+nombre_region = df_nombres["Nombre_Region"].iloc[0]
 
-    for archivo in os.listdir(carpeta):
-        if archivo.endswith(".xlsx"):
-            path = os.path.join(carpeta, archivo)
-            try:
-                df_temp = pd.read_excel(path)
-                if "Codigo_Region" in df_temp.columns and "Nombre_Region" in df_temp.columns:
-                    regiones_list.append(df_temp[["Codigo_Region", "Nombre_Region"]])
-            except Exception as e:
-                st.warning(f"Error leyendo {archivo}: {e}")
+# Crear diccionario para mapear número -> nombre de región
+region_map = {}
+for i in range(1, 17):
+    archivo = f"Brechas_Ingresos_Region_{i}.xlsx"
+    df = pd.read_excel(os.path.join(ruta_base, archivo))
+    region_map[i] = df["Nombre_Region"].iloc[0]
 
-    if regiones_list:
-        regiones_concat = pd.concat(regiones_list).drop_duplicates()
-        return dict(zip(regiones_concat["Nombre_Region"], regiones_concat["Codigo_Region"]))
+# Mostrar los nombres en el selectbox, pero trabajar con el número internamente
+region_seleccionada = st.selectbox(
+    "Selecciona la región:",
+    options=list(region_map.keys()),
+    format_func=lambda x: region_map[x]
+)
 
-    return {}
+# Función para cargar datos de una región
+def cargar_datos(tipo, region_num):
+    archivo = f"{tipo}_Region_{region_num}.xlsx"
+    ruta = os.path.join(ruta_base, archivo)
+    return pd.read_excel(ruta)
 
-# Sidebar
-indicador = st.sidebar.selectbox("Selecciona el indicador", list(indicadores.keys()))
-info = indicadores[indicador]
+# Cargar datos según la región seleccionada
+df_ingresos = cargar_datos("Brechas_Ingresos", region_seleccionada)
+df_matricula = cargar_datos("Brechas_Matricula", region_seleccionada)
+df_ocupacion = cargar_datos("Brechas_Ocupacion", region_seleccionada)
 
-# Obtener mapeo región_nombre -> región_codigo
-mapeo_regiones = obtener_mapeo_regiones(info)
-if not mapeo_regiones:
-    st.error("No se pudo leer la lista de regiones.")
-    st.stop()
+# Convertir a porcentajes y redondear
+for df in [df_ingresos, df_matricula, df_ocupacion]:
+    if "Brecha_2022" in df.columns:
+        df["Brecha_2022"] = df["Brecha_2022"] * 100
+        df["Brecha_2022"] = df["Brecha_2022"].round(1)
 
-nombre_region = st.sidebar.selectbox("Selecciona la región", sorted(mapeo_regiones.keys()))
-codigo_region = mapeo_regiones[nombre_region]
+# Crear gráficos
+st.subheader("Brecha de Ingresos 2022")
+fig1 = px.bar(
+    df_ingresos.sort_values("Brecha_2022"),
+    x="Brecha_2022",
+    y="Nombre_comuna",
+    orientation="h",
+    labels={"Brecha_2022": "Brecha (%)", "Nombre_comuna": "Comuna"},
+    color_discrete_sequence=["#26418f"]
+)
+st.plotly_chart(fig1, use_container_width=True)
 
-# Cargar archivo correspondiente
-archivo = os.path.join(info["carpeta"], f"{info['prefijo']}{codigo_region}.xlsx")
-try:
-    df = pd.read_excel(archivo)
-except FileNotFoundError:
-    st.error(f"No se encontró el archivo para la región {nombre_region}.")
-    st.stop()
+st.subheader("Brecha de Matrícula Educación Superior 2022")
+fig2 = px.bar(
+    df_matricula.sort_values("Brecha_2022"),
+    x="Brecha_2022",
+    y="Nombre_comuna",
+    orientation="h",
+    labels={"Brecha_2022": "Brecha (%)", "Nombre_comuna": "Comuna"},
+    color_discrete_sequence=["#197278"]
+)
+st.plotly_chart(fig2, use_container_width=True)
 
-# Asegurar formato decimal correcto
-df["YEAR_2018"] = df["YEAR_2018"].astype(str).str.replace(",", ".").astype(float)
-df["YEAR_2022"] = df["YEAR_2022"].astype(str).str.replace(",", ".").astype(float)
-
-# Pivotear para tener Hombre/Mujer en columnas
-df_pivot = df.pivot_table(
-    index=["Cod_Comuna", "Nombre_comuna"],
-    columns="Sexo",
-    values=["YEAR_2018", "YEAR_2022"]
-).reset_index()
-
-# Aplanar columnas
-df_pivot.columns = ['Cod_Comuna', 'Nombre_comuna', 'YEAR_2018_Hombre', 'YEAR_2018_Mujer', 'YEAR_2022_Hombre', 'YEAR_2022_Mujer']
-
-# Calcular brechas
-df_pivot["Brecha_2018"] = df_pivot["YEAR_2018_Hombre"] - df_pivot["YEAR_2018_Mujer"]
-df_pivot["Brecha_2022"] = df_pivot["YEAR_2022_Hombre"] - df_pivot["YEAR_2022_Mujer"]
-
-# Mostrar tabla
-st.subheader(f"{indicador} - {nombre_region} (Región {codigo_region})")
-st.dataframe(df_pivot[["Cod_Comuna", "Nombre_comuna", "Brecha_2018", "Brecha_2022"]], use_container_width=True)
-
-# Gráfico
-st.subheader("Comparación de brechas por comuna")
-
-df_plot = df_pivot.sort_values(by="Brecha_2022", ascending=False)
-
-fig, ax = plt.subplots(figsize=(12, 6))
-ax.hlines(y=df_plot["Nombre_comuna"], xmin=df_plot["Brecha_2018"], xmax=df_plot["Brecha_2022"], color='gray', alpha=0.5)
-ax.scatter(df_plot["Brecha_2018"], df_plot["Nombre_comuna"], color='skyblue', label='2018', s=100)
-ax.scatter(df_plot["Brecha_2022"], df_plot["Nombre_comuna"], color='red', label='2022', s=100)
-
-ax.set_xlabel("Brecha (Hombres - Mujeres)")
-ax.set_ylabel("Comuna")
-ax.set_title(f"{indicador} - {nombre_region}")
-ax.legend()
-
-st.pyplot(fig) 
+st.subheader("Brecha de Ocupación Laboral 2022")
+fig3 = px.bar(
+    df_ocupacion.sort_values("Brecha_2022"),
+    x="Brecha_2022",
+    y="Nombre_comuna",
+    orientation="h",
+    labels={"Brecha_2022": "Brecha (%)", "Nombre_comuna": "Comuna"},
+    color_discrete_sequence=["#f8961e"]
+)
+st.plotly_chart(fig3, use_container_width=True)
