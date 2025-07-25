@@ -21,15 +21,25 @@ indicadores = {
     }
 }
 
-# --- Función para obtener nombres de regiones desde cualquier archivo ---
+# --- NUEVA función: obtener nombres y códigos de todas las regiones ---
 def obtener_mapeo_regiones(info):
     carpeta = info["carpeta"]
+    regiones_list = []
+
     for archivo in os.listdir(carpeta):
         if archivo.endswith(".xlsx"):
-            df_temp = pd.read_excel(os.path.join(carpeta, archivo))
-            if "Codigo_Region" in df_temp.columns and "Nombre_Region" in df_temp.columns:
-                regiones = df_temp[["Codigo_Region", "Nombre_Region"]].drop_duplicates()
-                return dict(zip(regiones["Nombre_Region"], regiones["Codigo_Region"]))
+            path = os.path.join(carpeta, archivo)
+            try:
+                df_temp = pd.read_excel(path)
+                if "Codigo_Region" in df_temp.columns and "Nombre_Region" in df_temp.columns:
+                    regiones_list.append(df_temp[["Codigo_Region", "Nombre_Region"]])
+            except Exception as e:
+                st.warning(f"Error leyendo {archivo}: {e}")
+
+    if regiones_list:
+        regiones_concat = pd.concat(regiones_list).drop_duplicates()
+        return dict(zip(regiones_concat["Nombre_Region"], regiones_concat["Codigo_Region"]))
+
     return {}
 
 # Sidebar
@@ -42,14 +52,16 @@ if not mapeo_regiones:
     st.error("No se pudo leer la lista de regiones.")
     st.stop()
 
-nombre_region = st.sidebar.selectbox("Selecciona la región", list(mapeo_regiones.keys()))
+nombre_region = st.sidebar.selectbox("Selecciona la región", sorted(mapeo_regiones.keys()))
 codigo_region = mapeo_regiones[nombre_region]
-
-
 
 # Cargar archivo correspondiente
 archivo = os.path.join(info["carpeta"], f"{info['prefijo']}{codigo_region}.xlsx")
-df = pd.read_excel(archivo)
+try:
+    df = pd.read_excel(archivo)
+except FileNotFoundError:
+    st.error(f"No se encontró el archivo para la región {nombre_region}.")
+    st.stop()
 
 # Asegurar formato decimal correcto
 df["YEAR_2018"] = df["YEAR_2018"].astype(str).str.replace(",", ".").astype(float)
