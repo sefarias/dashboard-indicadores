@@ -62,6 +62,11 @@ except FileNotFoundError:
     st.error(f"No se encontró el archivo para la región {nombre_region}.")
     st.stop()
 
-# Mostrar la tabla exactamente como viene
-st.subheader(f"Datos originales - {indicador} - {nombre_region} (Región {codigo_region})")
-st.dataframe(df, use_container_width=True)
+# Filtrar columnas específicas
+columnas_mostrar = ["Nombre_Provincia", "Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2022"]
+columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
+df_filtrado = df[columnas_presentes]
+
+# Mostrar la tabla filtrada
+st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
+st.dataframe(df_filtrado, use_container_width=True)
