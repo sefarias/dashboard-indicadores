@@ -21,13 +21,34 @@ indicadores = {
     }
 }
 
+# --- Función para obtener nombres de regiones desde cualquier archivo ---
+def obtener_mapeo_regiones(info):
+    carpeta = info["carpeta"]
+    for archivo in os.listdir(carpeta):
+        if archivo.endswith(".xlsx"):
+            df_temp = pd.read_excel(os.path.join(carpeta, archivo))
+            if "Codigo_Region" in df_temp.columns and "Nombre_Region" in df_temp.columns:
+                regiones = df_temp[["Codigo_Region", "Nombre_Region"]].drop_duplicates()
+                return dict(zip(regiones["Nombre_Region"], regiones["Codigo_Region"]))
+    return {}
+
 # Sidebar
 indicador = st.sidebar.selectbox("Selecciona el indicador", list(indicadores.keys()))
-region = st.sidebar.selectbox("Selecciona la región", list(range(1, 17)))
-
-# Cargar archivo
 info = indicadores[indicador]
-archivo = os.path.join(info["carpeta"], f"{info['prefijo']}{region}.xlsx")
+
+# Obtener mapeo región_nombre -> región_codigo
+mapeo_regiones = obtener_mapeo_regiones(info)
+if not mapeo_regiones:
+    st.error("No se pudo leer la lista de regiones.")
+    st.stop()
+
+nombre_region = st.sidebar.selectbox("Selecciona la región", list(mapeo_regiones.keys()))
+codigo_region = mapeo_regiones[nombre_region]
+
+
+
+# Cargar archivo correspondiente
+archivo = os.path.join(info["carpeta"], f"{info['prefijo']}{codigo_region}.xlsx")
 df = pd.read_excel(archivo)
 
 # Asegurar formato decimal correcto
@@ -49,7 +70,7 @@ df_pivot["Brecha_2018"] = df_pivot["YEAR_2018_Hombre"] - df_pivot["YEAR_2018_Muj
 df_pivot["Brecha_2022"] = df_pivot["YEAR_2022_Hombre"] - df_pivot["YEAR_2022_Mujer"]
 
 # Mostrar tabla
-st.subheader(f"{indicador} - Región {region}")
+st.subheader(f"{indicador} - {nombre_region} (Región {codigo_region})")
 st.dataframe(df_pivot[["Cod_Comuna", "Nombre_comuna", "Brecha_2018", "Brecha_2022"]], use_container_width=True)
 
 # Gráfico
@@ -64,7 +85,7 @@ ax.scatter(df_plot["Brecha_2022"], df_plot["Nombre_comuna"], color='red', label=
 
 ax.set_xlabel("Brecha (Hombres - Mujeres)")
 ax.set_ylabel("Comuna")
-ax.set_title(f"{indicador} - Región {region}")
+ax.set_title(f"{indicador} - {nombre_region}")
 ax.legend()
 
 st.pyplot(fig)
