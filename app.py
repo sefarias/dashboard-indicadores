@@ -73,23 +73,32 @@ st.dataframe(df_filtrado, use_container_width=True)
 
 # Crear segunda tabla: pivotear por sexo y crear columnas Hombre_2018, Mujer_2018, Hombre_2022, Mujer_2022
 if all(col in df.columns for col in ["Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2022"]):
+    # Limpiar y normalizar columna Sexo
+    df['Sexo'] = df['Sexo'].astype(str).str.strip().str.capitalize()
+
+    # Filtrar sólo sexos esperados
+    df = df[df['Sexo'].isin(['Hombre', 'Mujer'])]
+
+    # Pivot con agregación sumando valores
     df_pivot = df.pivot_table(
         index=["Nombre_comuna"],
         columns="Sexo",
-        values=["YEAR_2018", "YEAR_2022"]
+        values=["YEAR_2018", "YEAR_2022"],
+        aggfunc='sum',
+        fill_value=0
     )
-    # Renombrar columnas para que queden Hombre_2018, Mujer_2018, Hombre_2022, Mujer_2022
+
+    # Renombrar columnas
     new_columns = {}
     for col in df_pivot.columns:
-        año = col[0].split('_')[1]  # Extrae '2018' o '2022'
-        sexo = col[1].capitalize()  # Asegura mayúscula inicial "Hombre" o "Mujer"
+        año = col[0].split('_')[1]  # '2018' o '2022'
+        sexo = col[1]  # Ya capitalizado
         new_col_name = f"{sexo}_{año}"
         new_columns[col] = new_col_name
 
     df_pivot.rename(columns=new_columns, inplace=True)
     df_pivot = df_pivot.reset_index()
 
-    # Ordenar columnas
     columnas_orden = ["Nombre_comuna", "Hombre_2018", "Mujer_2018", "Hombre_2022", "Mujer_2022"]
     columnas_orden_final = [c for c in columnas_orden if c in df_pivot.columns]
 
