@@ -67,6 +67,33 @@ columnas_mostrar = ["Nombre_Provincia", "Nombre_comuna", "Sexo", "YEAR_2018", "Y
 columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
 df_filtrado = df[columnas_presentes]
 
-# Mostrar la tabla filtrada
+# Mostrar tabla original
 st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
 st.dataframe(df_filtrado, use_container_width=True)
+
+# Crear segunda tabla: pivotear por sexo y crear columnas Hombre_2018, Mujer_2018, Hombre_2022, Mujer_2022
+if all(col in df.columns for col in ["Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2022"]):
+    df_pivot = df.pivot_table(
+        index=["Nombre_comuna"],
+        columns="Sexo",
+        values=["YEAR_2018", "YEAR_2022"]
+    )
+    # Renombrar columnas para que queden Hombre_2018, Mujer_2018, Hombre_2022, Mujer_2022
+    new_columns = {}
+    for col in df_pivot.columns:
+        año = col[0].split('_')[1]  # Extrae '2018' o '2022'
+        sexo = col[1].capitalize()  # Asegura mayúscula inicial "Hombre" o "Mujer"
+        new_col_name = f"{sexo}_{año}"
+        new_columns[col] = new_col_name
+
+    df_pivot.rename(columns=new_columns, inplace=True)
+    df_pivot = df_pivot.reset_index()
+
+    # Ordenar columnas
+    columnas_orden = ["Nombre_comuna", "Hombre_2018", "Mujer_2018", "Hombre_2022", "Mujer_2022"]
+    columnas_orden_final = [c for c in columnas_orden if c in df_pivot.columns]
+
+    st.subheader("Tabla Pivot: Valores por Sexo y Año")
+    st.dataframe(df_pivot[columnas_orden_final], use_container_width=True)
+else:
+    st.warning("No se pueden pivotear los datos: faltan columnas necesarias ('Nombre_comuna', 'Sexo', 'YEAR_2018', 'YEAR_2022').")
