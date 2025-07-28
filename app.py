@@ -167,5 +167,36 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
         ax5.legend()
         st.pyplot(fig5)
 
+
+                # Gráfico tipo "dot plot" agrupado (lollipop doble)
+        st.subheader("Gráfico de Puntos Agrupados: Comparación por Sexo y Año")
+
+        fig6, ax6 = plt.subplots(figsize=(8, 5))
+
+        # Valores
+        mujer_2018 = df_chart["Mujer_2018"].values[0]
+        mujer_2022 = df_chart["Mujer_2022"].values[0]
+        hombre_2018 = df_chart["Hombre_2018"].values[0]
+        hombre_2022 = df_chart["Hombre_2022"].values[0]
+
+        # Coordenadas Y
+        categorias = ['2018', '2022']
+        y_pos = range(len(categorias))
+
+        # Puntos
+        ax6.plot([mujer_2018, mujer_2022], y_pos, marker='o', linestyle='-', color='#c71585', label='Mujer')
+        ax6.plot([hombre_2018, hombre_2022], y_pos, marker='o', linestyle='-', color='#4682b4', label='Hombre')
+
+        # Línea vertical de referencia (opcional)
+        ax6.axvline(x=0, color='gray', linestyle='--', linewidth=0.7)
+
+        ax6.set_yticks(y_pos)
+        ax6.set_yticklabels(categorias)
+        ax6.set_xlabel("Valor")
+        ax6.set_title("Posición relativa por sexo en 2018 y 2022")
+        ax6.legend()
+        st.pyplot(fig6)
+
+
     else:
         st.warning("Faltan columnas clave como 'Mujer_2018' o 'Hombre_2022' en la tabla pivote para generar los gráficos.")
