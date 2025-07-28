@@ -159,16 +159,42 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
         ax4.legend(loc='upper right', bbox_to_anchor=(1.1, 1.1))
         st.pyplot(fig4)
 
-        # Gráfico de dispersión
-        fig5, ax5 = plt.subplots()
-        ax5.scatter(["Mujer_2018", "Mujer_2022"], mujer_vals[:2], color="#c71585", label="Mujer", s=100)
-        ax5.scatter(["Hombre_2018", "Hombre_2022"], hombre_vals[:2], color="#4682b4", label="Hombre", s=100)
-        ax5.set_title("Gráfico de Dispersión")
+                # Gráfico de dispersión mejorado tipo lollipop
+        st.subheader("Gráfico de Dispersión Mejorado (Tipo Lollipop)")
+
+        fig5, ax5 = plt.subplots(figsize=(8, 5))
+
+        x_vals = [2018, 2022]
+        mujer_vals = df_chart[["Mujer_2018", "Mujer_2022"]].values[0]
+        hombre_vals = df_chart[["Hombre_2018", "Hombre_2022"]].values[0]
+
+        # Líneas horizontales conectando los puntos (lollipop)
+        ax5.plot(x_vals, mujer_vals, color='#c71585', marker='o', linewidth=2, markersize=10, label='Mujer')
+        ax5.plot(x_vals, hombre_vals, color='#4682b4', marker='o', linewidth=2, markersize=10, label='Hombre')
+
+        # Línea de referencia vertical en el promedio (opcional)
+        promedio_valor = (sum(mujer_vals) + sum(hombre_vals)) / 4
+        ax5.axhline(y=promedio_valor, color='gray', linestyle='--', linewidth=1, label='Promedio')
+
+        # Títulos y etiquetas
+        ax5.set_xticks(x_vals)
+        ax5.set_xticklabels(["2018", "2022"])
+        ax5.set_ylabel("Valor")
+        ax5.set_title("Brechas por Sexo entre 2018 y 2022 (Dispersión + Lollipop)", fontsize=12)
         ax5.legend()
+        ax5.grid(True, axis='y', linestyle='--', alpha=0.5)
+
+        # Opcional: anotaciones
+        ax5.annotate(f"{mujer_vals[0]:.1f}", (2018, mujer_vals[0]), textcoords="offset points", xytext=(0,10), ha='center', fontsize=9, color="#c71585")
+        ax5.annotate(f"{mujer_vals[1]:.1f}", (2022, mujer_vals[1]), textcoords="offset points", xytext=(0,10), ha='center', fontsize=9, color="#c71585")
+        ax5.annotate(f"{hombre_vals[0]:.1f}", (2018, hombre_vals[0]), textcoords="offset points", xytext=(0,-15), ha='center', fontsize=9, color="#4682b4")
+        ax5.annotate(f"{hombre_vals[1]:.1f}", (2022, hombre_vals[1]), textcoords="offset points", xytext=(0,-15), ha='center', fontsize=9, color="#4682b4")
+
         st.pyplot(fig5)
 
 
-                # Gráfico tipo "dot plot" agrupado (lollipop doble)
+
+        # Gráfico tipo "dot plot" agrupado (lollipop doble)
         st.subheader("Gráfico de Puntos Agrupados: Comparación por Sexo y Año")
 
         fig6, ax6 = plt.subplots(figsize=(8, 5))
