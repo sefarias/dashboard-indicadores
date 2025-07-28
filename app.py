@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 import os
+import matplotlib.pyplot as plt
 
 st.set_page_config(layout="wide")
 
@@ -72,15 +73,12 @@ st.dataframe(df_filtrado, use_container_width=True)
 # Segunda tabla con pivot por sexo
 if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2022"]):
     
-    # Limpieza de columna Sexo
     df['Sexo'] = df['Sexo'].astype(str).str.strip().str.capitalize()
     df = df[df['Sexo'].isin(['Hombre', 'Mujer'])].copy()
 
-    # Asegurar columnas numéricas
     for col in [c for c in df.columns if c.startswith("YEAR_")]:
         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-    # Hacer pivot para pasar Sexo a columnas
     df_pivot = df.pivot_table(
         index=["Nombre_Region", "Nombre_Provincia", "Nombre_comuna"],
         columns="Sexo",
@@ -89,11 +87,42 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
         fill_value=0
     )
 
-    # Renombrar columnas a formato Hombre_2018, Mujer_2018, etc.
     df_pivot.columns = [f"{sexo}_{año.split('_')[1]}" for año, sexo in df_pivot.columns]
     df_pivot = df_pivot.reset_index()
 
     st.subheader("Tabla pivot con valores por sexo y año")
     st.dataframe(df_pivot, use_container_width=True)
-else:
-    st.warning("Faltan columnas necesarias para hacer el pivot.")
+
+        # Crear gráfico comparativo entre años 2018 y 2022
+    st.subheader("Comparación de brechas por sexo entre 2018 y 2022")
+
+    columnas_necesarias = ["Mujer_2018", "Mujer_2022", "Hombre_2018", "Hombre_2022"]
+    if all(col in df_pivot.columns for col in columnas_necesarias):
+
+        # Selección de comuna específica o top 10 por defecto
+        comunas_disponibles = df_pivot["Nombre_comuna"].unique()
+        comuna_seleccionada = st.selectbox("Selecciona una comuna para comparar (o dejar vacío para ver las 10 primeras):", options=[""] + list(comunas_disponibles))
+
+        if comuna_seleccionada:
+            df_chart = df_pivot[df_pivot["Nombre_comuna"] == comuna_seleccionada]
+        else:
+            df_chart = df_pivot.head(10)
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+        x = df_chart["Nombre_comuna"]
+
+        ax.bar(x, df_chart["Mujer_2018"], width=0.2, label="Mujer 2018", align='center', color="#ff69b4")
+        ax.bar(x, df_chart["Mujer_2022"], width=0.2, label="Mujer 2022", align='edge', color="#c71585")
+        ax.bar(x, -df_chart["Hombre_2018"], width=0.2, label="Hombre 2018", align='center', color="#87ceeb")
+        ax.bar(x, -df_chart["Hombre_2022"], width=0.2, label="Hombre 2022", align='edge', color="#4682b4")
+
+        ax.set_ylabel("Valor")
+        ax.set_title("Comparación de indicadores entre 2018 y 2022 por sexo (valores negativos = hombres)")
+        ax.set_xticks(range(len(x)))
+        ax.set_xticklabels(x, rotation=45, ha="right")
+        ax.axhline(0, color='black', linewidth=0.8)
+        ax.legend()
+        st.pyplot(fig)
+
+    else:
+        st.warning("Faltan columnas clave como 'Mujer_2018' o 'Hombre_2022' en la tabla pivote para generar el gráfico.")
