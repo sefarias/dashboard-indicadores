@@ -62,65 +62,38 @@ except FileNotFoundError:
     st.error(f"No se encontró el archivo para la región {nombre_region}.")
     st.stop()
 
-# Filtrar columnas específicas
-columnas_mostrar = ["Nombre_Provincia", "Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2022"]
+# Mostrar tabla original
+columnas_mostrar = ["Nombre_Region", "Nombre_Provincia", "Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2019", "YEAR_2020", "YEAR_2021", "YEAR_2022"]
 columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
 df_filtrado = df[columnas_presentes]
-
-# Mostrar tabla original
 st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
 st.dataframe(df_filtrado, use_container_width=True)
 
-# Segunda tabla con diagnósticos y pivot corregido
-if all(col in df.columns for col in ["Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2022"]):
-    st.write("Primeras filas antes de limpiar la columna 'Sexo':")
-    st.dataframe(df[["Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2022"]].head(10))
-
-    # Limpiar y normalizar columna Sexo
+# Segunda tabla con pivot por sexo
+if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2022"]):
+    
+    # Limpieza de columna Sexo
     df['Sexo'] = df['Sexo'].astype(str).str.strip().str.capitalize()
+    df = df[df['Sexo'].isin(['Hombre', 'Mujer'])].copy()
 
-    st.write("Valores únicos en 'Sexo' después de limpieza:")
-    st.write(df['Sexo'].unique())
+    # Asegurar columnas numéricas
+    for col in [c for c in df.columns if c.startswith("YEAR_")]:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-    # Filtrar sólo sexos esperados
-    df_filtrado_sexo = df[df['Sexo'].isin(['Hombre', 'Mujer'])]
+    # Hacer pivot para pasar Sexo a columnas
+    df_pivot = df.pivot_table(
+        index=["Nombre_Region", "Nombre_Provincia", "Nombre_comuna"],
+        columns="Sexo",
+        values=[c for c in df.columns if c.startswith("YEAR_")],
+        aggfunc="sum",
+        fill_value=0
+    )
 
-    st.write(f"Cantidad de filas después de filtrar Sexo='Hombre' o 'Mujer': {len(df_filtrado_sexo)}")
+    # Renombrar columnas a formato Hombre_2018, Mujer_2018, etc.
+    df_pivot.columns = [f"{sexo}_{año.split('_')[1]}" for año, sexo in df_pivot.columns]
+    df_pivot = df_pivot.reset_index()
 
-    if len(df_filtrado_sexo) == 0:
-        st.error("No hay datos para Sexo='Hombre' o 'Mujer' después del filtrado.")
-    else:
-        # Asegurar columnas YEAR_2018 y YEAR_2022 numéricas
-        for col in ["YEAR_2018", "YEAR_2022"]:
-            df_filtrado_sexo[col] = pd.to_numeric(df_filtrado_sexo[col], errors='coerce').fillna(0)
-
-        # Pivot con agregación sumando valores
-        df_pivot = df_filtrado_sexo.pivot_table(
-            index=["Nombre_comuna"],
-            columns="Sexo",
-            values=["YEAR_2018", "YEAR_2022"],
-            aggfunc='sum',
-            fill_value=0
-        )
-
-        st.write("Columnas del DataFrame pivote antes de renombrar:")
-        st.write(df_pivot.columns.tolist())
-
-        # Renombrar columnas
-        new_columns = {}
-        for col in df_pivot.columns:
-            año = col[0].split('_')[1]  # '2018' o '2022'
-            sexo = col[1]  # Ya capitalizado
-            new_col_name = f"{sexo}_{año}"
-            new_columns[col] = new_col_name
-
-        df_pivot.rename(columns=new_columns, inplace=True)
-        df_pivot = df_pivot.reset_index()
-
-        columnas_orden = ["Nombre_comuna", "Hombre_2018", "Mujer_2018", "Hombre_2022", "Mujer_2022"]
-        columnas_orden_final = [c for c in columnas_orden if c in df_pivot.columns]
-
-        st.subheader("Tabla Pivot: Valores por Sexo y Año")
-        st.dataframe(df_pivot[columnas_orden_final], use_container_width=True)
+    st.subheader("Tabla pivot con valores por sexo y año")
+    st.dataframe(df_pivot, use_container_width=True)
 else:
-    st.warning("No se pueden pivotear los datos: faltan columnas necesarias ('Nombre_comuna', 'Sexo', 'YEAR_2018', 'YEAR_2022').")
+    st.warning("Faltan columnas necesarias para hacer el pivot.")
