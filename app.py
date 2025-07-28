@@ -93,36 +93,79 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
     st.subheader("Tabla pivot con valores por sexo y año")
     st.dataframe(df_pivot, use_container_width=True)
 
-        # Crear gráfico comparativo entre años 2018 y 2022
+    # Crear gráfico comparativo entre años 2018 y 2022
     st.subheader("Comparación de brechas por sexo entre 2018 y 2022")
 
     columnas_necesarias = ["Mujer_2018", "Mujer_2022", "Hombre_2018", "Hombre_2022"]
     if all(col in df_pivot.columns for col in columnas_necesarias):
 
-        # Selección de comuna específica o top 10 por defecto
         comunas_disponibles = df_pivot["Nombre_comuna"].unique()
-        comuna_seleccionada = st.selectbox("Selecciona una comuna para comparar (o dejar vacío para ver las 10 primeras):", options=[""] + list(comunas_disponibles))
+        comuna_seleccionada = st.selectbox("Selecciona una comuna para comparar:", options=list(comunas_disponibles))
 
-        if comuna_seleccionada:
-            df_chart = df_pivot[df_pivot["Nombre_comuna"] == comuna_seleccionada]
-        else:
-            df_chart = df_pivot.head(10)
+        df_chart = df_pivot[df_pivot["Nombre_comuna"] == comuna_seleccionada]
 
-        fig, ax = plt.subplots(figsize=(12, 6))
-        x = df_chart["Nombre_comuna"]
+        x_labels = ["2018", "2022"]
 
-        ax.bar(x, df_chart["Mujer_2018"], width=0.2, label="Mujer 2018", align='center', color="#ff69b4")
-        ax.bar(x, df_chart["Mujer_2022"], width=0.2, label="Mujer 2022", align='edge', color="#c71585")
-        ax.bar(x, -df_chart["Hombre_2018"], width=0.2, label="Hombre 2018", align='center', color="#87ceeb")
-        ax.bar(x, -df_chart["Hombre_2022"], width=0.2, label="Hombre 2022", align='edge', color="#4682b4")
+        # Gráfico de barras
+        fig1, ax1 = plt.subplots()
+        ax1.bar(x_labels, df_chart[["Mujer_2018", "Mujer_2022"]].values[0], label="Mujer", color=["#ff69b4", "#c71585"])
+        ax1.bar(x_labels, -df_chart[["Hombre_2018", "Hombre_2022"]].values[0], label="Hombre", color=["#87ceeb", "#4682b4"])
+        ax1.axhline(0, color='black')
+        ax1.set_title("Gráfico de Barras: Brechas 2018 vs 2022")
+        ax1.legend()
+        st.pyplot(fig1)
 
-        ax.set_ylabel("Valor")
-        ax.set_title("Comparación de indicadores entre 2018 y 2022 por sexo (valores negativos = hombres)")
-        ax.set_xticks(range(len(x)))
-        ax.set_xticklabels(x, rotation=45, ha="right")
-        ax.axhline(0, color='black', linewidth=0.8)
-        ax.legend()
-        st.pyplot(fig)
+        # Gráfico de líneas
+        fig2, ax2 = plt.subplots()
+        ax2.plot(x_labels, df_chart[["Mujer_2018", "Mujer_2022"]].values[0], marker="o", label="Mujer", color="#c71585")
+        ax2.plot(x_labels, df_chart[["Hombre_2018", "Hombre_2022"]].values[0], marker="o", label="Hombre", color="#4682b4")
+        ax2.set_title("Gráfico de Líneas: Evolución por sexo")
+        ax2.legend()
+        st.pyplot(fig2)
+
+        # Gráfico de áreas apiladas
+        fig3, ax3 = plt.subplots()
+        mujer_vals = df_chart[["Mujer_2018", "Mujer_2022"]].values[0]
+        hombre_vals = df_chart[["Hombre_2018", "Hombre_2022"]].values[0]
+        ax3.stackplot(x_labels, mujer_vals, hombre_vals, labels=["Mujer", "Hombre"], colors=["#ff69b4", "#87ceeb"])
+        ax3.set_title("Gráfico de Áreas Apiladas")
+        ax3.legend(loc='upper left')
+        st.pyplot(fig3)
+
+        # Gráfico de radar
+        import numpy as np
+        from math import pi
+
+        categories = ['2018', '2022']
+        values_mujer = df_chart[["Mujer_2018", "Mujer_2022"]].values.flatten().tolist()
+        values_hombre = df_chart[["Hombre_2018", "Hombre_2022"]].values.flatten().tolist()
+
+        # Radar requiere cerrar el círculo
+        values_mujer += values_mujer[:1]
+        values_hombre += values_hombre[:1]
+        angles = [n / float(len(categories)) * 2 * pi for n in range(len(categories))]
+        angles += angles[:1]
+
+        fig4, ax4 = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+        ax4.plot(angles, values_mujer, color="#c71585", linewidth=2, label='Mujer')
+        ax4.fill(angles, values_mujer, color="#c71585", alpha=0.25)
+
+        ax4.plot(angles, values_hombre, color="#4682b4", linewidth=2, label='Hombre')
+        ax4.fill(angles, values_hombre, color="#4682b4", alpha=0.25)
+
+        ax4.set_xticks(angles[:-1])
+        ax4.set_xticklabels(categories)
+        ax4.set_title("Gráfico de Radar: Comparación 2018-2022")
+        ax4.legend(loc='upper right', bbox_to_anchor=(1.1, 1.1))
+        st.pyplot(fig4)
+
+        # Gráfico de dispersión
+        fig5, ax5 = plt.subplots()
+        ax5.scatter(["Mujer_2018", "Mujer_2022"], mujer_vals[:2], color="#c71585", label="Mujer", s=100)
+        ax5.scatter(["Hombre_2018", "Hombre_2022"], hombre_vals[:2], color="#4682b4", label="Hombre", s=100)
+        ax5.set_title("Gráfico de Dispersión")
+        ax5.legend()
+        st.pyplot(fig5)
 
     else:
-        st.warning("Faltan columnas clave como 'Mujer_2018' o 'Hombre_2022' en la tabla pivote para generar el gráfico.")
+        st.warning("Faltan columnas clave como 'Mujer_2018' o 'Hombre_2022' en la tabla pivote para generar los gráficos.")
