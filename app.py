@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 import os
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 st.set_page_config(layout="wide")
 
@@ -72,7 +73,7 @@ st.dataframe(df_filtrado, use_container_width=True)
 
 # Segunda tabla con pivot por sexo
 if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2022"]):
-    
+
     df['Sexo'] = df['Sexo'].astype(str).str.strip().str.capitalize()
     df = df[df['Sexo'].isin(['Hombre', 'Mujer'])].copy()
 
@@ -93,136 +94,22 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
     st.subheader("Tabla pivot con valores por sexo y año")
     st.dataframe(df_pivot, use_container_width=True)
 
-    # Crear gráfico comparativo entre años 2018 y 2022
-    st.subheader("Comparación de brechas por sexo entre 2018 y 2022")
+    # Gráfico: Comparación de brechas para todas las comunas
+    st.subheader("Gráfico de Brechas por Comuna (2018 vs 2022)")
+    if all(col in df_pivot.columns for col in ["Mujer_2018", "Mujer_2022", "Hombre_2018", "Hombre_2022"]):
+        df_pivot["Brecha_2018"] = df_pivot["Hombre_2018"] - df_pivot["Mujer_2018"]
+        df_pivot["Brecha_2022"] = df_pivot["Hombre_2022"] - df_pivot["Mujer_2022"]
 
-    columnas_necesarias = ["Mujer_2018", "Mujer_2022", "Hombre_2018", "Hombre_2022"]
-    if all(col in df_pivot.columns for col in columnas_necesarias):
-
-        comunas_disponibles = df_pivot["Nombre_comuna"].unique()
-        comuna_seleccionada = st.selectbox("Selecciona una comuna para comparar:", options=list(comunas_disponibles))
-
-        df_chart = df_pivot[df_pivot["Nombre_comuna"] == comuna_seleccionada]
-
-        x_labels = ["2018", "2022"]
-
-        # Gráfico de barras
-        fig1, ax1 = plt.subplots()
-        ax1.bar(x_labels, df_chart[["Mujer_2018", "Mujer_2022"]].values[0], label="Mujer", color=["#ff69b4", "#c71585"])
-        ax1.bar(x_labels, -df_chart[["Hombre_2018", "Hombre_2022"]].values[0], label="Hombre", color=["#87ceeb", "#4682b4"])
-        ax1.axhline(0, color='black')
-        ax1.set_title("Gráfico de Barras: Brechas 2018 vs 2022")
-        ax1.legend()
-        st.pyplot(fig1)
-
-        # Gráfico de líneas
-        fig2, ax2 = plt.subplots()
-        ax2.plot(x_labels, df_chart[["Mujer_2018", "Mujer_2022"]].values[0], marker="o", label="Mujer", color="#c71585")
-        ax2.plot(x_labels, df_chart[["Hombre_2018", "Hombre_2022"]].values[0], marker="o", label="Hombre", color="#4682b4")
-        ax2.set_title("Gráfico de Líneas: Evolución por sexo")
-        ax2.legend()
-        st.pyplot(fig2)
-
-        # Gráfico de áreas apiladas
-        fig3, ax3 = plt.subplots()
-        mujer_vals = df_chart[["Mujer_2018", "Mujer_2022"]].values[0]
-        hombre_vals = df_chart[["Hombre_2018", "Hombre_2022"]].values[0]
-        ax3.stackplot(x_labels, mujer_vals, hombre_vals, labels=["Mujer", "Hombre"], colors=["#ff69b4", "#87ceeb"])
-        ax3.set_title("Gráfico de Áreas Apiladas")
-        ax3.legend(loc='upper left')
-        st.pyplot(fig3)
-
-        # Gráfico de radar
-        import numpy as np
-        from math import pi
-
-        categories = ['2018', '2022']
-        values_mujer = df_chart[["Mujer_2018", "Mujer_2022"]].values.flatten().tolist()
-        values_hombre = df_chart[["Hombre_2018", "Hombre_2022"]].values.flatten().tolist()
-
-        # Radar requiere cerrar el círculo
-        values_mujer += values_mujer[:1]
-        values_hombre += values_hombre[:1]
-        angles = [n / float(len(categories)) * 2 * pi for n in range(len(categories))]
-        angles += angles[:1]
-
-        fig4, ax4 = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
-        ax4.plot(angles, values_mujer, color="#c71585", linewidth=2, label='Mujer')
-        ax4.fill(angles, values_mujer, color="#c71585", alpha=0.25)
-
-        ax4.plot(angles, values_hombre, color="#4682b4", linewidth=2, label='Hombre')
-        ax4.fill(angles, values_hombre, color="#4682b4", alpha=0.25)
-
-        ax4.set_xticks(angles[:-1])
-        ax4.set_xticklabels(categories)
-        ax4.set_title("Gráfico de Radar: Comparación 2018-2022")
-        ax4.legend(loc='upper right', bbox_to_anchor=(1.1, 1.1))
-        st.pyplot(fig4)
-
-                # Gráfico de dispersión mejorado tipo lollipop
-        st.subheader("Gráfico de Dispersión Mejorado (Tipo Lollipop)")
-
-        fig5, ax5 = plt.subplots(figsize=(8, 5))
-
-        x_vals = [2018, 2022]
-        mujer_vals = df_chart[["Mujer_2018", "Mujer_2022"]].values[0]
-        hombre_vals = df_chart[["Hombre_2018", "Hombre_2022"]].values[0]
-
-        # Líneas horizontales conectando los puntos (lollipop)
-        ax5.plot(x_vals, mujer_vals, color='#c71585', marker='o', linewidth=2, markersize=10, label='Mujer')
-        ax5.plot(x_vals, hombre_vals, color='#4682b4', marker='o', linewidth=2, markersize=10, label='Hombre')
-
-        # Línea de referencia vertical en el promedio (opcional)
-        promedio_valor = (sum(mujer_vals) + sum(hombre_vals)) / 4
-        ax5.axhline(y=promedio_valor, color='gray', linestyle='--', linewidth=1, label='Promedio')
-
-        # Títulos y etiquetas
-        ax5.set_xticks(x_vals)
-        ax5.set_xticklabels(["2018", "2022"])
-        ax5.set_ylabel("Valor")
-        ax5.set_title("Brechas por Sexo entre 2018 y 2022 (Dispersión + Lollipop)", fontsize=12)
-        ax5.legend()
-        ax5.grid(True, axis='y', linestyle='--', alpha=0.5)
-
-        # Opcional: anotaciones
-        ax5.annotate(f"{mujer_vals[0]:.1f}", (2018, mujer_vals[0]), textcoords="offset points", xytext=(0,10), ha='center', fontsize=9, color="#c71585")
-        ax5.annotate(f"{mujer_vals[1]:.1f}", (2022, mujer_vals[1]), textcoords="offset points", xytext=(0,10), ha='center', fontsize=9, color="#c71585")
-        ax5.annotate(f"{hombre_vals[0]:.1f}", (2018, hombre_vals[0]), textcoords="offset points", xytext=(0,-15), ha='center', fontsize=9, color="#4682b4")
-        ax5.annotate(f"{hombre_vals[1]:.1f}", (2022, hombre_vals[1]), textcoords="offset points", xytext=(0,-15), ha='center', fontsize=9, color="#4682b4")
-
-        st.pyplot(fig5)
-
-
-
-        # Gráfico tipo "dot plot" agrupado (lollipop doble)
-        st.subheader("Gráfico de Puntos Agrupados: Comparación por Sexo y Año")
-
-        fig6, ax6 = plt.subplots(figsize=(8, 5))
-
-        # Valores
-        mujer_2018 = df_chart["Mujer_2018"].values[0]
-        mujer_2022 = df_chart["Mujer_2022"].values[0]
-        hombre_2018 = df_chart["Hombre_2018"].values[0]
-        hombre_2022 = df_chart["Hombre_2022"].values[0]
-
-        # Coordenadas Y
-        categorias = ['2018', '2022']
-        y_pos = range(len(categorias))
-
-        # Puntos
-        ax6.plot([mujer_2018, mujer_2022], y_pos, marker='o', linestyle='-', color='#c71585', label='Mujer')
-        ax6.plot([hombre_2018, hombre_2022], y_pos, marker='o', linestyle='-', color='#4682b4', label='Hombre')
-
-        # Línea vertical de referencia (opcional)
-        ax6.axvline(x=0, color='gray', linestyle='--', linewidth=0.7)
-
-        ax6.set_yticks(y_pos)
-        ax6.set_yticklabels(categorias)
-        ax6.set_xlabel("Valor")
-        ax6.set_title("Posición relativa por sexo en 2018 y 2022")
-        ax6.legend()
-        st.pyplot(fig6)
-
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ancho = 0.35
+        x = range(len(df_pivot))
+        ax.bar(x, df_pivot["Brecha_2018"], width=ancho, label='Brecha 2018', color='#a1c9f4')
+        ax.bar([i + ancho for i in x], df_pivot["Brecha_2022"], width=ancho, label='Brecha 2022', color='#ffb482')
+        ax.set_xticks([i + ancho / 2 for i in x])
+        ax.set_xticklabels(df_pivot["Nombre_comuna"], rotation=90)
+        ax.set_title("Comparación de Brechas Hombre - Mujer por Comuna")
+        ax.legend()
+        st.pyplot(fig)
 
     else:
-        st.warning("Faltan columnas clave como 'Mujer_2018' o 'Hombre_2022' en la tabla pivote para generar los gráficos.")
+        st.warning("No hay columnas suficientes para calcular las brechas para todas las comunas.")
