@@ -100,10 +100,9 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
     if all(col in df_pivot.columns for col in columnas_necesarias):
 
         comunas_disponibles = df_pivot["Nombre_comuna"].unique()
+        comuna_seleccionada = st.selectbox("Selecciona una comuna para comparar:", options=list(comunas_disponibles))
 
-        for comuna_seleccionada in comunas_disponibles:
-            st.markdown(f"### 📍 Comuna: {comuna_seleccionada}")
-            df_chart = df_pivot[df_pivot["Nombre_comuna"] == comuna_seleccionada]
+        df_chart = df_pivot[df_pivot["Nombre_comuna"] == comuna_seleccionada]
 
         x_labels = ["2018", "2022"]
 
