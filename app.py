@@ -141,5 +141,20 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
         ax3.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=7)
         st.pyplot(fig3)
 
+        if all(col in df_pivot.columns for col in ["Mujer_2018", "Mujer_2022", "Hombre_2018", "Hombre_2022"]):
+            df_prov = df_pivot.groupby("Nombre_Provincia")[["Hombre_2018", "Mujer_2018", "Hombre_2022", "Mujer_2022"]].mean().reset_index()
+            df_prov["Brecha_2018"] = df_prov["Hombre_2018"] - df_prov["Mujer_2018"]
+            df_prov["Brecha_2022"] = df_prov["Hombre_2022"] - df_prov["Mujer_2022"]
+
+            st.subheader("Brecha Promedio por Provincia")
+
+            fig4, ax4 = plt.subplots(figsize=(8, 6))
+            df_prov_sorted = df_prov.sort_values("Brecha_2022", ascending=False)
+            ax4.barh(df_prov_sorted["Nombre_Provincia"], df_prov_sorted["Brecha_2022"], color="#77c9d4")
+            ax4.set_xlabel("Brecha (Hombre - Mujer) 2022")
+            ax4.set_title("Brecha Promedio por Provincia - Año 2022")
+            plt.tight_layout()
+            st.pyplot(fig4)
+
     else:
         st.warning("No hay columnas suficientes para calcular las brechas para todas las comunas.")
