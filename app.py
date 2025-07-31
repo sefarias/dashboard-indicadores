@@ -156,5 +156,38 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
             plt.tight_layout()
             st.pyplot(fig4)
 
+        st.subheader("Distribución de Brechas por Comuna")
+
+        fig5, ax5 = plt.subplots(figsize=(8, 6))
+        sns.boxplot(data=df_pivot[["Brecha_2018", "Brecha_2022"]], ax=ax5)
+        ax5.set_ylabel("Brecha (Hombre - Mujer)")
+        ax5.set_title("Distribución de Brechas en Comunas para 2018 y 2022")
+        st.pyplot(fig5)
+
+        st.subheader("Mapa de calor de Brechas por Comuna y Año")
+
+        df_heat = df_pivot.set_index("Nombre_comuna")[["Brecha_2018", "Brecha_2022"]]
+        fig6, ax6 = plt.subplots(figsize=(10, max(6, len(df_heat)*0.2)))  # Ajusta alto según número comunas
+        sns.heatmap(df_heat, cmap="coolwarm", annot=True, fmt=".2f", ax=ax6)
+        ax6.set_xlabel("Año")
+        ax6.set_ylabel("Comuna")
+        st.pyplot(fig6)
+
+
+        st.subheader("Evolución Completa de Brechas por Comuna (2018-2022)")
+
+        años = [2018, 2019, 2020, 2021, 2022]
+        for año in años:
+            df_pivot[f"Brecha_{año}"] = df_pivot[f"Hombre_{año}"] - df_pivot[f"Mujer_{año}"]
+
+        fig7, ax7 = plt.subplots(figsize=(12, 6))
+        for i in range(len(df_pivot)):
+            ax7.plot(años, df_pivot.loc[i, [f"Brecha_{a}" for a in años]], marker='o', label=df_pivot.loc[i, "Nombre_comuna"])
+        ax7.set_xticks(años)
+        ax7.set_ylabel("Brecha (Hombre - Mujer)")
+        ax7.set_title("Evolución Completa de la Brecha por Comuna")
+        ax7.grid(True)
+        ax7.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=7)
+        st.pyplot(fig7)
     else:
         st.warning("No hay columnas suficientes para calcular las brechas para todas las comunas.")
