@@ -94,7 +94,7 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
     st.subheader("Tabla pivot con valores por sexo y año")
     st.dataframe(df_pivot, use_container_width=True)
 
-    # Gráfico: Comparación de brechas para todas las comunas
+    # Gráfico: Barras comparativas de brechas
     st.subheader("Gráfico de Brechas por Comuna (2018 vs 2022)")
     if all(col in df_pivot.columns for col in ["Mujer_2018", "Mujer_2022", "Hombre_2018", "Hombre_2022"]):
         df_pivot["Brecha_2018"] = df_pivot["Hombre_2018"] - df_pivot["Mujer_2018"]
@@ -110,6 +110,36 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
         ax.set_title("Comparación de Brechas Hombre - Mujer por Comuna")
         ax.legend()
         st.pyplot(fig)
+
+        # Gráfico de dispersión con línea identidad
+        st.subheader("Dispersión de Brechas (2018 vs 2022)")
+        fig2, ax2 = plt.subplots(figsize=(8, 6))
+        sns.scatterplot(data=df_pivot, x="Brecha_2018", y="Brecha_2022", ax=ax2)
+        for i in range(df_pivot.shape[0]):
+            ax2.text(df_pivot["Brecha_2018"][i] + 0.1, df_pivot["Brecha_2022"][i] + 0.1, df_pivot["Nombre_comuna"][i], fontsize=7)
+
+        max_val = max(df_pivot["Brecha_2018"].max(), df_pivot["Brecha_2022"].max())
+        min_val = min(df_pivot["Brecha_2018"].min(), df_pivot["Brecha_2022"].min())
+        ax2.plot([min_val, max_val], [min_val, max_val], 'k--', label="Línea identidad")
+        ax2.axhline(0, color='gray', linewidth=0.5)
+        ax2.axvline(0, color='gray', linewidth=0.5)
+        ax2.set_xlabel("Brecha 2018")
+        ax2.set_ylabel("Brecha 2022")
+        ax2.set_title("Brecha Hombre - Mujer: 2018 vs 2022")
+        ax2.legend()
+        st.pyplot(fig2)
+
+        # Gráfico de líneas por comuna
+        st.subheader("Evolución de Brechas por Comuna (2018 a 2022)")
+        fig3, ax3 = plt.subplots(figsize=(10, 6))
+        for i in range(len(df_pivot)):
+            ax3.plot([2018, 2022], [df_pivot["Brecha_2018"][i], df_pivot["Brecha_2022"][i]], marker='o', label=df_pivot["Nombre_comuna"][i])
+        ax3.set_xticks([2018, 2022])
+        ax3.set_ylabel("Brecha (Hombre - Mujer)")
+        ax3.set_title("Evolución de la Brecha por Comuna")
+        ax3.grid(True)
+        ax3.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=7)
+        st.pyplot(fig3)
 
     else:
         st.warning("No hay columnas suficientes para calcular las brechas para todas las comunas.")
