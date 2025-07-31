@@ -146,15 +146,44 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
             df_prov["Brecha_2018"] = df_prov["Hombre_2018"] - df_prov["Mujer_2018"]
             df_prov["Brecha_2022"] = df_prov["Hombre_2022"] - df_prov["Mujer_2022"]
 
-            st.subheader("Brecha Promedio por Provincia")
+            # Ordenar provincias por brecha 2022 descendente
+        df_prov_sorted = df_prov.sort_values("Brecha_2022", ascending=False)
 
-            fig4, ax4 = plt.subplots(figsize=(8, 6))
-            df_prov_sorted = df_prov.sort_values("Brecha_2022", ascending=False)
-            ax4.barh(df_prov_sorted["Nombre_Provincia"], df_prov_sorted["Brecha_2022"], color="#77c9d4")
-            ax4.set_xlabel("Brecha (Hombre - Mujer) 2022")
-            ax4.set_title("Brecha Promedio por Provincia - Año 2022")
-            plt.tight_layout()
-            st.pyplot(fig4)
+        # Dibujar barras horizontales con grosor (height), color y borde
+        bars = ax4.barh(
+            df_prov_sorted["Nombre_Provincia"],
+            df_prov_sorted["Brecha_2022"],
+            color="#77c9d4",
+            height=0.6,           # Grosor de las barras (0.1 a 1.0)
+            edgecolor="black",    # Color del borde de las barras
+            linewidth=0.8
+        )
+
+        # Etiquetas y título con tamaño, color y padding personalizados
+        ax4.set_xlabel("Brecha (Hombre - Mujer) 2022", fontsize=14, color='darkblue', labelpad=12)
+        ax4.set_ylabel("Provincia", fontsize=14, color='darkblue', labelpad=12)
+        ax4.set_title("Brecha Promedio por Provincia - Año 2022", fontsize=16, fontweight='bold', pad=15)
+
+        # Invertir eje Y para mostrar mayor brecha arriba
+        ax4.invert_yaxis()
+
+        # Añadir etiquetas de valor al final de cada barra para mejor lectura
+        for bar in bars:
+            width = bar.get_width()
+            ax4.text(
+                width + 0.02,                     # Posición X (ligeramente fuera de la barra)
+                bar.get_y() + bar.get_height() / 2,  # Posición Y (centro de la barra)
+                f"{width:.2f}",                   # Texto (valor con 2 decimales)
+                va='center',                      # Alineación vertical
+                fontsize=10,
+                color='black'
+            )
+
+        # Ajustar layout para que no se corte nada
+        plt.tight_layout()
+
+        # Mostrar gráfico en Streamlit
+        st.pyplot(fig4)
 
         st.subheader("Distribución de Brechas por Comuna")
 
