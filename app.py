@@ -176,7 +176,7 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
 
         st.subheader("Evolución Completa de Brechas por Comuna (2018-2022)")
 
-        años = [2018, 2019, 2020, 2021, 2022]
+        años = [2018, 2022]
         for año in años:
             df_pivot[f"Brecha_{año}"] = df_pivot[f"Hombre_{año}"] - df_pivot[f"Mujer_{año}"]
 
@@ -191,3 +191,6 @@ if all(col in df.columns for col in ["Nombre_Region", "Nombre_Provincia", "Nombr
         st.pyplot(fig7)
     else:
         st.warning("No hay columnas suficientes para calcular las brechas para todas las comunas.")
+
+
+
