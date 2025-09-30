@@ -19,7 +19,14 @@ indicadores = {
     "Brechas de Ocupación": {
         "carpeta": "Datos/BRECHAS_OCU",
         "prefijo": "Brechas_Ocupacion_Region_"
+    },
+
+     "Dependencia": {
+        "carpeta": "Datos/DEPENDENCIA",
+        "prefijo": "Dependencia_Region_"
     }
+
+    
 }
 
 # Función: obtener mapeo {nombre región: código región}
