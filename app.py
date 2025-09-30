@@ -59,7 +59,7 @@ def format_number(x):
         return ""
     return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-# Sidebar
+# Sidebar para seleccionar indicador y región
 indicador = st.sidebar.selectbox("Selecciona el indicador", list(indicadores.keys()))
 info = indicadores[indicador]
 
@@ -95,10 +95,14 @@ if indicador == "Dependencia":
     columnas_anos = [col for col in df_filtrado.columns if col.startswith("Año ")]
     df_dep = df_filtrado.copy()
 
-    # Selección de año para gráfico de columnas
-    anio_seleccionado = st.sidebar.selectbox("Selecciona el año para el gráfico de columnas", columnas_anos)
-    st.subheader(f"Gráfico de Columnas - {anio_seleccionado}")
+    # --- Selección de año para gráfico de columnas en el flujo central ---
+    anio_seleccionado = st.selectbox(
+        "Selecciona el año para el gráfico de columnas",
+        columnas_anos,
+        index=columnas_anos.index("Año 2022") if "Año 2022" in columnas_anos else 0
+    )
 
+    st.subheader(f"Gráfico de Columnas - {anio_seleccionado}")
     fig_bar = px.bar(
         df_dep.sort_values(anio_seleccionado, ascending=False),
         x="Comuna",
@@ -108,14 +112,10 @@ if indicador == "Dependencia":
         labels={"Comuna": "Comuna", anio_seleccionado: "Valor"},
         title=f"Dependencia por Comuna - {anio_seleccionado}"
     )
-    fig_bar.update_traces(
-        texttemplate='%{y:.2f}',
-        textposition='outside',
-        hovertemplate="Comuna: %{x}<br>Valor: %{y:.2f}"
-    )
-    # Aplicar coma en hover y texto
+    # Formato con coma y 2 decimales
     fig_bar.update_traces(
         texttemplate=[format_number(v) for v in df_dep[anio_seleccionado]],
+        textposition='outside',
         hovertemplate=[f"Comuna: {c}<br>Valor: {format_number(v)}" for c, v in zip(df_dep["Comuna"], df_dep[anio_seleccionado])]
     )
     fig_bar.update_layout(
@@ -125,11 +125,10 @@ if indicador == "Dependencia":
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
-    # Gráfico de líneas con toda la serie
+    # --- Gráfico de líneas con toda la serie ---
     st.subheader("Evolución de Dependencia por Comuna (Serie Completa)")
     df_melt = df_dep.melt(id_vars=["Comuna"], value_vars=columnas_anos,
                           var_name="Año", value_name="Valor")
-
     fig_line = px.line(
         df_melt,
         x="Año",
@@ -139,7 +138,7 @@ if indicador == "Dependencia":
         hover_name="Comuna",
         title="Evolución de la Dependencia por Comuna"
     )
-    # Aplicar hover con coma y 2 decimales
+    # Formato hover con coma y 2 decimales
     fig_line.update_traces(
         mode="lines+markers",
         hovertemplate=[f"Comuna: {c}<br>Año: {a}<br>Valor: {format_number(v)}"
