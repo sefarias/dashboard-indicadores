@@ -72,7 +72,7 @@ except FileNotFoundError:
     st.stop()
 
 # Mostrar tabla original
-columnas_mostrar = ["Nombre_Region", "Nombre_Provincia", "Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2019", "YEAR_2020", "YEAR_2021", "YEAR_2022",, "YEAR_2023"]
+columnas_mostrar = ["Nombre_Region", "Nombre_Provincia", "Nombre_comuna", "Sexo", "YEAR_2018", "YEAR_2019", "YEAR_2020", "YEAR_2021", "YEAR_2022", "YEAR_2023"]
 columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
 df_filtrado = df[columnas_presentes]
 st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
