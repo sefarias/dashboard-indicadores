@@ -9,22 +9,10 @@ st.set_page_config(layout="wide")
 
 # Diccionario de indicadores
 indicadores = {
-    "Brechas de Ingresos": {
-        "carpeta": "Datos/BRECHAS_ING",
-        "prefijo": "Brechas_Ingresos_Region_"
-    },
-    "Brechas de Matrícula": {
-        "carpeta": "Datos/BRECHAS_MAT",
-        "prefijo": "Brechas_Matricula_Region_"
-    },
-    "Brechas de Ocupación": {
-        "carpeta": "Datos/BRECHAS_OCU",
-        "prefijo": "Brechas_Ocupacion_Region_"
-    },
-    "Dependencia": {
-        "carpeta": "Datos/DEPENDENCIA",
-        "prefijo": "Dependencia_Region_"
-    }
+    "Brechas de Ingresos": {"carpeta": "Datos/BRECHAS_ING", "prefijo": "Brechas_Ingresos_Region_"},
+    "Brechas de Matrícula": {"carpeta": "Datos/BRECHAS_MAT", "prefijo": "Brechas_Matricula_Region_"},
+    "Brechas de Ocupación": {"carpeta": "Datos/BRECHAS_OCU", "prefijo": "Brechas_Ocupacion_Region_"},
+    "Dependencia": {"carpeta": "Datos/DEPENDENCIA", "prefijo": "Dependencia_Region_"}
 }
 
 # Diccionario de nombres más legibles
@@ -121,9 +109,14 @@ if indicador == "Dependencia":
         title=f"Dependencia por Comuna - {anio_seleccionado}"
     )
     fig_bar.update_traces(
-        texttemplate='%{y:.2f}'.replace(".", ","),
+        texttemplate='%{y:.2f}',
         textposition='outside',
-        hovertemplate="Comuna: %{x}<br>Valor: %{y:.2f}".replace(".", ",")
+        hovertemplate="Comuna: %{x}<br>Valor: %{y:.2f}"
+    )
+    # Aplicar coma en hover y texto
+    fig_bar.update_traces(
+        texttemplate=[format_number(v) for v in df_dep[anio_seleccionado]],
+        hovertemplate=[f"Comuna: {c}<br>Valor: {format_number(v)}" for c, v in zip(df_dep["Comuna"], df_dep[anio_seleccionado])]
     )
     fig_bar.update_layout(
         xaxis_tickangle=-90,
@@ -146,9 +139,11 @@ if indicador == "Dependencia":
         hover_name="Comuna",
         title="Evolución de la Dependencia por Comuna"
     )
+    # Aplicar hover con coma y 2 decimales
     fig_line.update_traces(
         mode="lines+markers",
-        hovertemplate="Comuna: %{legendgroup}<br>Año: %{x}<br>Valor: %{y:.2f}".replace(".", ",")
+        hovertemplate=[f"Comuna: {c}<br>Año: {a}<br>Valor: {format_number(v)}"
+                       for c, a, v in zip(df_melt["Comuna"], df_melt["Año"], df_melt["Valor"])]
     )
     fig_line.update_layout(
         yaxis=dict(title="Valor (%)", range=[0, 100]),
