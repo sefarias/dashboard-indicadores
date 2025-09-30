@@ -57,7 +57,7 @@ def obtener_mapeo_regiones(info):
 def format_number(x):
     if pd.isna(x):
         return ""
-    return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{x:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # Sidebar para seleccionar indicador y región
 indicador = st.sidebar.selectbox("Selecciona el indicador", list(indicadores.keys()))
@@ -102,6 +102,7 @@ if indicador == "Dependencia":
         index=columnas_anos.index("Año 2022") if "Año 2022" in columnas_anos else 0
     )
 
+    # Gráfico de Columnas
     st.subheader(f"Gráfico de Columnas - {anio_seleccionado}")
     fig_bar = px.bar(
         df_dep.sort_values(anio_seleccionado, ascending=False),
@@ -112,7 +113,6 @@ if indicador == "Dependencia":
         labels={"Comuna": "Comuna", anio_seleccionado: "Valor"},
         title=f"Dependencia por Comuna - {anio_seleccionado}"
     )
-    # Formato con coma y 2 decimales
     fig_bar.update_traces(
         texttemplate=[format_number(v) for v in df_dep[anio_seleccionado]],
         textposition='outside',
@@ -125,24 +125,24 @@ if indicador == "Dependencia":
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
-    # --- Gráfico de líneas con toda la serie ---
+    # Gráfico de Líneas
     st.subheader("Evolución de Dependencia por Comuna (Serie Completa)")
     df_melt = df_dep.melt(id_vars=["Comuna"], value_vars=columnas_anos,
                           var_name="Año", value_name="Valor")
+
     fig_line = px.line(
         df_melt,
         x="Año",
         y="Valor",
         color="Comuna",
         markers=True,
-        hover_name="Comuna",
-        title="Evolución de la Dependencia por Comuna"
+        title="Evolución de la Dependencia por Comuna",
+        custom_data=["Comuna", "Valor"]
     )
-    # Formato hover con coma y 2 decimales
+
     fig_line.update_traces(
         mode="lines+markers",
-        hovertemplate=[f"Comuna: {c}<br>Año: {a}<br>Valor: {format_number(v)}"
-                       for c, a, v in zip(df_melt["Comuna"], df_melt["Año"], df_melt["Valor"])]
+        hovertemplate="Comuna: %{customdata[0]}<br>Año: %{x}<br>Valor: %{customdata[1]:.1f} %"
     )
     fig_line.update_layout(
         yaxis=dict(title="Valor (%)", range=[0, 100]),
