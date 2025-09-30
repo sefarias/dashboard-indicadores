@@ -3,6 +3,7 @@ import streamlit as st
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
 
 st.set_page_config(layout="wide")
 
@@ -102,26 +103,37 @@ if indicador == "Dependencia":
     anio_seleccionado = st.sidebar.selectbox("Selecciona el año para el gráfico de columnas", columnas_anos)
 
     st.subheader(f"Gráfico de Columnas - {anio_seleccionado}")
-    fig_bar, ax_bar = plt.subplots(figsize=(10, 6))
-    df_dep_sorted = df_dep.sort_values(anio_seleccionado, ascending=False)
-    ax_bar.bar(df_dep_sorted["Comuna"], df_dep_sorted[anio_seleccionado], color="#4a90e2")
-    ax_bar.set_xlabel("Comuna")
-    ax_bar.set_ylabel("Valor")
-    ax_bar.set_title(f"Dependencia por Comuna - {anio_seleccionado}")
-    ax_bar.tick_params(axis="x", rotation=90)
-    st.pyplot(fig_bar)
+    fig_bar = px.bar(
+        df_dep.sort_values(anio_seleccionado, ascending=False),
+        x="Comuna",
+        y=anio_seleccionado,
+        color="Comuna",
+        text=anio_seleccionado,
+        labels={"Comuna": "Comuna", anio_seleccionado: "Valor"},
+        title=f"Dependencia por Comuna - {anio_seleccionado}"
+    )
+    fig_bar.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+    fig_bar.update_layout(xaxis_tickangle=-90, showlegend=False)
+    st.plotly_chart(fig_bar, use_container_width=True)
 
     # Gráfico de líneas con toda la serie
     st.subheader("Evolución de Dependencia por Comuna (Serie Completa)")
-    fig_line, ax_line = plt.subplots(figsize=(12, 6))
-    for _, row in df_dep.iterrows():
-        ax_line.plot(columnas_anos, row[columnas_anos], marker='o', label=row["Comuna"])
-    ax_line.set_xlabel("Año")
-    ax_line.set_ylabel("Valor")
-    ax_line.set_title("Evolución de la Dependencia por Comuna")
-    ax_line.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=7)
-    ax_line.grid(True)
-    st.pyplot(fig_line)
+
+    df_melt = df_dep.melt(id_vars=["Comuna"], value_vars=columnas_anos,
+                          var_name="Año", value_name="Valor")
+
+    fig_line = px.line(
+        df_melt,
+        x="Año",
+        y="Valor",
+        color="Comuna",
+        markers=True,
+        hover_name="Comuna",
+        title="Evolución de la Dependencia por Comuna"
+    )
+    fig_line.update_traces(mode="lines+markers")
+    st.plotly_chart(fig_line, use_container_width=True)
+
 
 # ============= RESTO DE INDICADORES (BRECHAS) =============
 elif all(col in df.columns for col in ["Sexo", "Año 2018", "Año 2022"]):
