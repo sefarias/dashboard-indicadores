@@ -27,8 +27,8 @@ indicadores = {
     }
 }
 
-# Renombrar columnas para mejor presentación
-nombres_columnas = {
+# Diccionario de nombres más legibles
+mapa_columnas = {
     "Nombre_Region": "Región",
     "Nombre_Provincia": "Provincia",
     "Nombre_comuna": "Comuna",
@@ -39,6 +39,12 @@ nombres_columnas = {
     "YEAR_2021": "Año 2021",
     "YEAR_2022": "Año 2022",
     "YEAR_2023": "Año 2023",
+    "Hombre_2018": "Hombres 2018",
+    "Mujer_2018": "Mujeres 2018",
+    "Hombre_2022": "Hombres 2022",
+    "Mujer_2022": "Mujeres 2022",
+    "Brecha_2018": "Brecha 2018 (H-M)",
+    "Brecha_2022": "Brecha 2022 (H-M)"
 }
 
 # Función: obtener mapeo {nombre región: código región}
@@ -83,19 +89,20 @@ except FileNotFoundError:
     st.error(f"No se encontró el archivo para la región {nombre_region}.")
     st.stop()
 
-# Renombrar columnas si existen en el DataFrame
-df.rename(columns=nombres_columnas, inplace=True)
-
-# Mostrar tabla original
-columnas_mostrar = list(nombres_columnas.values())
+# Mostrar tabla original con nombres más claros
+columnas_mostrar = [
+    "Nombre_Region", "Nombre_Provincia", "Nombre_comuna", "Sexo",
+    "YEAR_2018", "YEAR_2019", "YEAR_2020", "YEAR_2021", "YEAR_2022", "YEAR_2023"
+]
 columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
-df_filtrado = df[columnas_presentes]
+df_filtrado = df[columnas_presentes].rename(columns=mapa_columnas)
+
 st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
 st.dataframe(df_filtrado, use_container_width=True)
 
 # ============= GRÁFICOS ESPECIALES PARA DEPENDENCIA =============
 if indicador == "Dependencia":
-    # Limpiar nombres de columnas de años
+    # Identificar columnas de años
     columnas_anos = [col for col in df_filtrado.columns if col.startswith("Año ")]
     df_dep = df_filtrado.copy()
 
@@ -112,8 +119,12 @@ if indicador == "Dependencia":
         labels={"Comuna": "Comuna", anio_seleccionado: "Valor"},
         title=f"Dependencia por Comuna - {anio_seleccionado}"
     )
-    fig_bar.update_traces(texttemplate='%{text:.2f}', textposition='outside')
-    fig_bar.update_layout(xaxis_tickangle=-90, showlegend=False)
+    fig_bar.update_traces(texttemplate='%{text:.1f}', textposition='outside')
+    fig_bar.update_layout(
+        xaxis_tickangle=-90,
+        showlegend=False,
+        yaxis=dict(title="Valor (%)", range=[0, 100])  # Eje Y fijo
+    )
     st.plotly_chart(fig_bar, use_container_width=True)
 
     # Gráfico de líneas con toda la serie
@@ -132,30 +143,7 @@ if indicador == "Dependencia":
         title="Evolución de la Dependencia por Comuna"
     )
     fig_line.update_traces(mode="lines+markers")
-    st.plotly_chart(fig_line, use_container_width=True)
-
-
-# ============= RESTO DE INDICADORES (BRECHAS) =============
-elif all(col in df.columns for col in ["Sexo", "Año 2018", "Año 2022"]):
-
-    df['Sexo'] = df['Sexo'].astype(str).str.strip().str.capitalize()
-    df = df[df['Sexo'].isin(['Hombre', 'Mujer'])].copy()
-
-    for col in [c for c in df.columns if c.startswith("Año ")]:
-        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-
-    df_pivot = df.pivot_table(
-        index=["Región", "Provincia", "Comuna"],
-        columns="Sexo",
-        values=[c for c in df.columns if c.startswith("Año ")],
-        aggfunc="sum",
-        fill_value=0
+    fig_line.update_layout(
+        yaxis=dict(title="Valor (%)", range=[0, 100])  # Eje Y fijo
     )
-
-    df_pivot.columns = [f"{sexo}_{año.split(' ')[1]}" for año, sexo in df_pivot.columns]
-    df_pivot = df_pivot.reset_index()
-
-    st.subheader("Tabla pivot con valores por sexo y año")
-    st.dataframe(df_pivot, use_container_width=True)
-
-    # (Aquí van los gráficos de brechas como en tu código original)
+    st.plotly_chart(fig_line, use_container_width=True)
