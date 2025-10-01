@@ -1,8 +1,6 @@
 import pandas as pd
 import streamlit as st
 import os
-import matplotlib.pyplot as plt
-import seaborn as sns
 import plotly.express as px
 import geopandas as gpd
 
@@ -81,13 +79,22 @@ except FileNotFoundError:
     st.error(f"No se encontró el archivo para la región {nombre_region}.")
     st.stop()
 
-# Mostrar tabla original con nombres más claros y formato decimal
+# Mantener columnas de códigos para merge
+columnas_codigos = ["Cod_Comuna", "Codigo_Region"]
+
+# Columnas a mostrar con nombres legibles
 columnas_mostrar = [
     "Nombre_Region", "Nombre_Provincia", "Nombre_comuna", "Sexo",
     "YEAR_2018", "YEAR_2019", "YEAR_2020", "YEAR_2021", "YEAR_2022", "YEAR_2023"
 ]
-columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
-df_filtrado = df[columnas_presentes].rename(columns=mapa_columnas)
+
+columnas_presentes = [col for col in columnas_mostrar + columnas_codigos if col in df.columns]
+
+# Renombrar solo las columnas de visualización
+columnas_renombrar = {k:v for k,v in mapa_columnas.items() if k in df.columns}
+df_filtrado = df[columnas_presentes].rename(columns=columnas_renombrar)
+
+# Mostrar tabla
 st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
 st.dataframe(df_filtrado.style.format(lambda x: format_number(x) if isinstance(x, float) else x), use_container_width=True)
 
@@ -149,39 +156,29 @@ if indicador == "Dependencia":
     )
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # ================= MAPA DE DEPENDENCIA POR COMUNA =================
+    # ===== MAPA DE DEPENDENCIA POR COMUNA =====
     st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
-    shp_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
-
     try:
-        gdf = gpd.read_file(shp_path)
-
-        # Convertir códigos a int
-        gdf['cod_comuna'] = gdf['cod_comuna'].astype(int)
-        df_dep['Cod_Comuna'] = df_dep['Comuna'].map(lambda x: df_dep[df_dep['Comuna']==x]['Cod_Comuna'].values[0] if x in df_dep['Comuna'].values else None)
-
-        # Merge entre shapefile y DataFrame
+        gdf = gpd.read_file(r"F:/Users/sfarias/Documents/Curso Python/.vscode/dashboard-indicadores/Datos/MAPAS/comunas_tratadas/comunas_continental.shp")
+        # Merge usando cod_comuna y Cod_Comuna
         gdf_merged = gdf.merge(df_dep, left_on='cod_comuna', right_on='Cod_Comuna', how='inner')
-
-        # Filtrar solo la región seleccionada
-        gdf_merged_region = gdf_merged[gdf_merged_region['Codigo_Region']==codigo_region] if 'Codigo_Region' in gdf_merged.columns else gdf_merged
-
-        # Graficar mapa
+        # Filtrar por región seleccionada
+        gdf_merged_region = gdf_merged[gdf_merged['Codigo_Region'] == codigo_region]
+        # Graficar
         fig_map = px.choropleth_mapbox(
             gdf_merged_region,
             geojson=gdf_merged_region.geometry.__geo_interface__,
             locations=gdf_merged_region.index,
             color=anio_seleccionado,
             hover_name="Comuna",
-            hover_data={anio_seleccionado: True},
+            hover_data={anio_seleccionado: ':.2f'},
             mapbox_style="carto-positron",
-            center={"lat": -35.0, "lon": -71.5},
-            zoom=5,
-            opacity=0.6,
+            center={"lat": gdf_merged_region.geometry.centroid.y.mean(),
+                    "lon": gdf_merged_region.geometry.centroid.x.mean()},
+            zoom=6,
             color_continuous_scale="Viridis"
         )
         fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
         st.plotly_chart(fig_map, use_container_width=True)
-
     except Exception as e:
         st.error(f"No se pudo generar el mapa: {e}")
