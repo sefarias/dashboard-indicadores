@@ -121,8 +121,8 @@ if indicador == "Dependencia":
     fig_line.update_layout(yaxis=dict(title="Valor (%)", range=[0,100]), hovermode="x unified")
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # ======= Mapa por comuna =======
-    st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
+        # ======= Mapa por comuna =======
+    st.subheader(f"Mapa de Dependencia por Comuna - Año {anio_seleccionado}")
     try:
         shp_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
         gdf = gpd.read_file(shp_path)
@@ -139,11 +139,15 @@ if indicador == "Dependencia":
         elif "Comuna_y" in gdf_merge.columns:
             gdf_merge.rename(columns={"Comuna_y": "Comuna"}, inplace=True)
 
-        # Generar mapa
+        # Convertir a GeoJSON válido
+        geojson_data = gdf_merge.__geo_interface__
+
+        # Mapa base
         fig_map = px.choropleth(
             gdf_merge,
-            geojson=gdf_merge.geometry,
-            locations=gdf_merge.index,
+            geojson=geojson_data,
+            locations="cod_comuna",
+            featureidkey="properties.cod_comuna",  # <- enlaza GeoJSON con DataFrame
             color=anio_seleccionado,
             hover_name="Comuna",
             projection="mercator",
@@ -151,7 +155,24 @@ if indicador == "Dependencia":
             color_continuous_scale="Viridis"
         )
         fig_map.update_geos(fitbounds="locations", visible=False)
+
+        # ======= Agregar etiquetas con centroides =======
+        gdf_merge["centroid"] = gdf_merge.geometry.centroid
+        gdf_merge["lon"] = gdf_merge.centroid.x
+        gdf_merge["lat"] = gdf_merge.centroid.y
+        gdf_merge["label"] = gdf_merge[anio_seleccionado].apply(lambda x: format_number(x) if pd.notna(x) else "")
+
+        fig_map.add_scattergeo(
+            lon=gdf_merge["lon"],
+            lat=gdf_merge["lat"],
+            text=gdf_merge["label"],
+            mode="text",
+            textfont=dict(color="white", size=12, family="Arial Black"),
+            showlegend=False
+        )
+
         st.plotly_chart(fig_map, use_container_width=True)
 
     except Exception as e:
         st.error(f"No se pudo generar el mapa: {e}")
+
