@@ -64,7 +64,7 @@ if not mapeo_regiones:
 nombre_region = st.sidebar.selectbox("Selecciona la región", sorted(mapeo_regiones.keys()))
 codregion = mapeo_regiones[nombre_region]
 
-# Leer archivo de la región seleccionada
+# Leer archivo
 archivo = os.path.join(info["carpeta"], f"{info['prefijo']}{codregion}.xlsx")
 try:
     df = pd.read_excel(archivo)
@@ -104,7 +104,8 @@ if indicador == "Dependencia":
     )
     fig_bar.update_traces(
         texttemplate=[format_number(v) for v in df_dep[anio_seleccionado]],
-        textposition='outside'
+        textposition='outside',
+        hovertemplate=[f"Comuna: {c}<br>Valor: {format_number(v)}" for c,v in zip(df_dep["Comuna"], df_dep[anio_seleccionado])]
     )
     fig_bar.update_layout(xaxis_tickangle=-90, showlegend=False, yaxis=dict(title="Valor (%)", range=[0,100]))
     st.plotly_chart(fig_bar, use_container_width=True)
@@ -113,9 +114,10 @@ if indicador == "Dependencia":
     st.subheader("Evolución de Dependencia por Comuna (Serie Completa)")
     df_melt = df_dep.melt(id_vars=["Comuna"], value_vars=columnas_anos,
                           var_name="Año", value_name="Valor")
-    fig_line = px.line(df_melt, x="Año", y="Valor", color="Comuna", markers=True,
-                       title="Evolución de la Dependencia por Comuna")
-    fig_line.update_traces(mode="lines+markers")
+    fig_line = px.line(df_melt, x="Año", y="Valor", color="Comuna", markers=True, title="Evolución de la Dependencia por Comuna",
+                       custom_data=["Comuna","Valor"])
+    fig_line.update_traces(mode="lines+markers",
+                           hovertemplate="Comuna: %{customdata[0]}<br>Año: %{x}<br>Valor: %{customdata[1]:.2f} %")
     fig_line.update_layout(yaxis=dict(title="Valor (%)", range=[0,100]), hovermode="x unified")
     st.plotly_chart(fig_line, use_container_width=True)
 
@@ -125,31 +127,33 @@ if indicador == "Dependencia":
         shp_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
         gdf = gpd.read_file(shp_path)
 
+        # Reproyectar a EPSG:4326
+        if gdf.crs is not None and gdf.crs.to_epsg() != 4326:
+            gdf = gdf.to_crs(epsg=4326)
+
         # Filtrar solo la región seleccionada
         gdf_region = gdf[gdf["codregion"] == codregion]
 
         # Merge con los datos de dependencia por cod_comuna
         gdf_merge = gdf_region.merge(df_dep, on="cod_comuna", how="left")
 
-        # Asegurar columna "Comuna"
-        if "Comuna_y" in gdf_merge.columns:
-            gdf_merge.rename(columns={"Comuna_y": "Comuna"}, inplace=True)
-        if "Comuna_x" in gdf_merge.columns and "Comuna" not in gdf_merge.columns:
-            gdf_merge.rename(columns={"Comuna_x": "Comuna"}, inplace=True)
+        # Calcular centroide de la región
+        minx, miny, maxx, maxy = gdf_region.total_bounds
+        center = {"lat": (miny + maxy) / 2, "lon": (minx + maxx) / 2}
 
-        # Generar mapa (escala automática según valores de esa región)
-        fig_map = px.choropleth(
+        # Generar mapa
+        fig_map = px.choropleth_mapbox(
             gdf_merge,
             geojson=gdf_merge.geometry,
             locations=gdf_merge.index,
             color=anio_seleccionado,
             hover_name="Comuna",
-            projection="mercator",
-            labels={anio_seleccionado:"Valor (%)"},
-            color_continuous_scale="Viridis",
-            range_color=(gdf_merge[anio_seleccionado].min(), gdf_merge[anio_seleccionado].max())
+            mapbox_style="carto-positron",
+            center=center,
+            zoom=7,
+            opacity=0.7,
+            labels={anio_seleccionado:"Valor (%)"}
         )
-        fig_map.update_geos(fitbounds="locations", visible=False)
         st.plotly_chart(fig_map, use_container_width=True)
 
     except Exception as e:
