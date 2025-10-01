@@ -121,39 +121,50 @@ if indicador == "Dependencia":
     fig_line.update_layout(yaxis=dict(title="Valor (%)", range=[0,100]), hovermode="x unified")
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # ================= Mapa de Dependencia =================
-    st.subheader("Mapa de Dependencia por Comuna (Continental)")
+# ================= Mapa de Dependencia =================
+st.subheader("Mapa de Dependencia por Comuna (Continental)")
 
-    # Leer shapefile continental
-    shapefile_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
-    gdf = gpd.read_file(shapefile_path)
+# Leer shapefile continental
+shapefile_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\DEPENDENCIA\comunas_continental.shp"
+gdf = gpd.read_file(shapefile_path)
 
-    # Filtrar por la región seleccionada
-    gdf_region = gdf[gdf['codregion'] == codregion]
+# Filtrar por la región seleccionada
+gdf_region = gdf[gdf['codregion'] == codregion]
 
-    # Hacer merge con los datos de dependencia
-    df_merge = df_dep.copy()
-    if 'cod_comuna' not in gdf_region.columns:
-        st.error("El shapefile no tiene la columna 'cod_comuna'. Revisar los datos.")
+# Hacer merge con los datos de dependencia
+df_merge = df_dep.copy()
+if 'cod_comuna' not in gdf_region.columns:
+    st.error("El shapefile no tiene la columna 'cod_comuna'. Revisar los datos.")
+else:
+    gdf_region = gdf_region.merge(df_merge, left_on='cod_comuna', right_on='cod_comuna')
+
+    # Verificar qué columna usar para hover_name
+    if 'Comuna_y' in gdf_region.columns:
+        hover_col = 'Comuna_y'
+    elif 'Nombre_comuna' in gdf_region.columns:
+        hover_col = 'Nombre_comuna'
     else:
-        gdf_region = gdf_region.merge(df_merge, left_on='cod_comuna', right_on='cod_comuna')
+        hover_col = 'cod_comuna'  # fallback
 
-        # Convertir a GeoJSON para Plotly
-        geojson_region = gdf_region.__geo_interface__
+    # Convertir a GeoJSON para Plotly
+    geojson_region = gdf_region.__geo_interface__
 
-        # Crear choropleth
-        fig_map = px.choropleth(
-            gdf_region,
-            geojson=geojson_region,
-            locations=gdf_region.index,
-            color=anio_seleccionado,
-            hover_name="Comuna",
-            projection="mercator",
-            labels={anio_seleccionado:"Valor (%)"},
-            color_continuous_scale="Viridis"
-        )
+    # Crear choropleth
+    fig_map = px.choropleth(
+        gdf_region,
+        geojson=geojson_region,
+        locations=gdf_region.index,
+        color=anio_seleccionado,
+        hover_name=hover_col,
+        projection="mercator",
+        labels={anio_seleccionado:"Valor (%)"},
+        color_continuous_scale="Viridis"
+    )
 
-        fig_map.update_geos(fitbounds="locations", visible=False)
-        fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, coloraxis_colorbar=dict(title="Dependencia (%)"))
+    fig_map.update_geos(fitbounds="locations", visible=False)
+    fig_map.update_layout(
+        margin={"r":0,"t":0,"l":0,"b":0},
+        coloraxis_colorbar=dict(title="Dependencia (%)")
+    )
 
-        st.plotly_chart(fig_map, use_container_width=True)
+    st.plotly_chart(fig_map, use_container_width=True)
