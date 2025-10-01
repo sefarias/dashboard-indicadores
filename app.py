@@ -125,7 +125,7 @@ if indicador == "Dependencia":
 st.subheader("Mapa de Dependencia por Comuna (Continental)")
 
 # Leer shapefile continental
-shapefile_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\DEPENDENCIA\comunas_continental.shp"
+shapefile_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
 gdf = gpd.read_file(shapefile_path)
 
 # Filtrar por la región seleccionada
