@@ -1,6 +1,8 @@
 import pandas as pd
 import streamlit as st
 import os
+import matplotlib.pyplot as plt
+import seaborn as sns
 import plotly.express as px
 import geopandas as gpd
 
@@ -52,7 +54,7 @@ def obtener_mapeo_regiones(info):
         return dict(zip(regiones_concat["Nombre_Region"], regiones_concat["Codigo_Region"]))
     return {}
 
-# Función para formatear números con coma y 1 decimal
+# Función para formatear números con coma y 2 decimales
 def format_number(x):
     if pd.isna(x):
         return ""
@@ -128,7 +130,6 @@ if indicador == "Dependencia":
     st.subheader("Evolución de Dependencia por Comuna (Serie Completa)")
     df_melt = df_dep.melt(id_vars=["Comuna"], value_vars=columnas_anos,
                           var_name="Año", value_name="Valor")
-
     fig_line = px.line(
         df_melt,
         x="Año",
@@ -138,7 +139,6 @@ if indicador == "Dependencia":
         title="Evolución de la Dependencia por Comuna",
         custom_data=["Comuna", "Valor"]
     )
-
     fig_line.update_traces(
         mode="lines+markers",
         hovertemplate="Comuna: %{customdata[0]}<br>Año: %{x}<br>Valor: %{customdata[1]:.2f} %"
@@ -149,48 +149,39 @@ if indicador == "Dependencia":
     )
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # ============= MAPA DE COMUNAS POR REGION =============
-st.subheader(f"Mapa de Dependencia - {anio_seleccionado}")
+    # ================= MAPA DE DEPENDENCIA POR COMUNA =================
+    st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
+    shp_path = r"F:\Users\sfarias\Documents\Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
 
-try:
-    # Leer shapefile de comunas
-    ruta_shp = r"F:\Users\sfarias\Documents\Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
-    gdf = gpd.read_file(ruta_shp)
+    try:
+        gdf = gpd.read_file(shp_path)
 
-    # Filtrar solo la región seleccionada
-    gdf_region = gdf[gdf['codregion'] == codigo_region]
+        # Convertir códigos a int
+        gdf['cod_comuna'] = gdf['cod_comuna'].astype(int)
+        df_dep['Cod_Comuna'] = df_dep['Comuna'].map(lambda x: df_dep[df_dep['Comuna']==x]['Cod_Comuna'].values[0] if x in df_dep['Comuna'].values else None)
 
-    # Hacer merge con los datos de dependencia
-    df_region = df_dep[['Comuna', anio_seleccionado]]
-    gdf_region = gdf_region.merge(df_region, left_on='Comuna', right_on='Comuna')
+        # Merge entre shapefile y DataFrame
+        gdf_merged = gdf.merge(df_dep, left_on='cod_comuna', right_on='Cod_Comuna', how='inner')
 
-    # Convertir a GeoJSON
-    geojson_region = gdf_region.__geo_interface__
+        # Filtrar solo la región seleccionada
+        gdf_merged_region = gdf_merged[gdf_merged_region['Codigo_Region']==codigo_region] if 'Codigo_Region' in gdf_merged.columns else gdf_merged
 
-    # Formatear valores con coma y 2 decimales para hover
-    hover_values = [f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") for v in gdf_region[anio_seleccionado]]
+        # Graficar mapa
+        fig_map = px.choropleth_mapbox(
+            gdf_merged_region,
+            geojson=gdf_merged_region.geometry.__geo_interface__,
+            locations=gdf_merged_region.index,
+            color=anio_seleccionado,
+            hover_name="Comuna",
+            hover_data={anio_seleccionado: True},
+            mapbox_style="carto-positron",
+            center={"lat": -35.0, "lon": -71.5},
+            zoom=5,
+            opacity=0.6,
+            color_continuous_scale="Viridis"
+        )
+        fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+        st.plotly_chart(fig_map, use_container_width=True)
 
-    # Graficar con Plotly
-    fig_map = px.choropleth_mapbox(
-        gdf_region,
-        geojson=geojson_region,
-        locations='cod_comuna',
-        color=anio_seleccionado,
-        color_continuous_scale="Viridis",
-        mapbox_style="carto-positron",
-        featureidkey="properties.cod_comuna",
-        zoom=6,
-        center={"lat": gdf_region.geometry.centroid.y.mean(),
-                "lon": gdf_region.geometry.centroid.x.mean()},
-        opacity=0.7,
-        hover_name='Comuna',
-        hover_data={anio_seleccionado: hover_values}
-    )
-    fig_map.update_layout(
-        margin={"r":0,"t":0,"l":0,"b":0},
-        coloraxis_colorbar=dict(title="Valor (%)")
-    )
-    st.plotly_chart(fig_map, use_container_width=True)
-
-except Exception as e:
-    st.error(f"No se pudo generar el mapa: {e}")
+    except Exception as e:
+        st.error(f"No se pudo generar el mapa: {e}")
