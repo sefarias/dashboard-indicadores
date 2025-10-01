@@ -151,7 +151,7 @@ if indicador == "Dependencia":
     st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
 
     # Cargar shapefile de comunas
-    ruta_shp = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_continental.shp"
+    ruta_shp = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
     gdf_comunas = gpd.read_file(ruta_shp)
 
     # Unificar formato de nombres de comuna
