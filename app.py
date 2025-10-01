@@ -6,7 +6,7 @@ import geopandas as gpd
 
 st.set_page_config(layout="wide")
 
-# Diccionario de indicadores
+# ================== Diccionario de indicadores ==================
 indicadores = {
     "Brechas de Ingresos": {"carpeta": "Datos/BRECHAS_ING", "prefijo": "Brechas_Ingresos_Region_"},
     "Brechas de Matrícula": {"carpeta": "Datos/BRECHAS_MAT", "prefijo": "Brechas_Matricula_Region_"},
@@ -14,7 +14,7 @@ indicadores = {
     "Dependencia": {"carpeta": "Datos/DEPENDENCIA", "prefijo": "Dependencia_Region_"}
 }
 
-# Diccionario de nombres más legibles
+# ================== Mapa de nombres de columnas ==================
 mapa_columnas = {
     "Nombre_Region": "Región",
     "Nombre_Provincia": "Provincia",
@@ -34,7 +34,7 @@ mapa_columnas = {
     "Brecha_2022": "Brecha 2022 (H-M)"
 }
 
-# Función para obtener mapeo de regiones
+# ================== Funciones ==================
 def obtener_mapeo_regiones(info):
     carpeta = info["carpeta"]
     regiones_list = []
@@ -52,13 +52,12 @@ def obtener_mapeo_regiones(info):
         return dict(zip(regiones_concat["Nombre_Region"], regiones_concat["Codigo_Region"]))
     return {}
 
-# Función para formatear números con coma y 2 decimales
 def format_number(x):
     if pd.isna(x):
         return ""
     return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-# Sidebar para seleccionar indicador y región
+# ================== Sidebar ==================
 indicador = st.sidebar.selectbox("Selecciona el indicador", list(indicadores.keys()))
 info = indicadores[indicador]
 
@@ -79,38 +78,29 @@ except FileNotFoundError:
     st.error(f"No se encontró el archivo para la región {nombre_region}.")
     st.stop()
 
-# Mantener columnas de códigos para merge
-columnas_codigos = ["Cod_Comuna", "Codigo_Region"]
-
-# Columnas a mostrar con nombres legibles
+# ================== Tabla ==================
 columnas_mostrar = [
     "Nombre_Region", "Nombre_Provincia", "Nombre_comuna", "Sexo",
     "YEAR_2018", "YEAR_2019", "YEAR_2020", "YEAR_2021", "YEAR_2022", "YEAR_2023"
 ]
-
-columnas_presentes = [col for col in columnas_mostrar + columnas_codigos if col in df.columns]
-
-# Renombrar solo las columnas de visualización
-columnas_renombrar = {k:v for k,v in mapa_columnas.items() if k in df.columns}
-df_filtrado = df[columnas_presentes].rename(columns=columnas_renombrar)
-
-# Mostrar tabla
+columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
+df_filtrado = df[columnas_presentes].rename(columns=mapa_columnas)
 st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
 st.dataframe(df_filtrado.style.format(lambda x: format_number(x) if isinstance(x, float) else x), use_container_width=True)
 
-# ============= GRÁFICOS ESPECIALES PARA DEPENDENCIA =============
+# ================== Gráficos y Mapas para Dependencia ==================
 if indicador == "Dependencia":
     columnas_anos = [col for col in df_filtrado.columns if col.startswith("Año ")]
     df_dep = df_filtrado.copy()
 
-    # --- Selección de año para gráfico de columnas en el flujo central ---
+    # --- Selección de año para gráfico de columnas ---
     anio_seleccionado = st.selectbox(
         "Selecciona el año para el gráfico de columnas",
         columnas_anos,
         index=columnas_anos.index("Año 2022") if "Año 2022" in columnas_anos else 0
     )
 
-    # Gráfico de Columnas
+    # ----- Gráfico de Columnas -----
     st.subheader(f"Gráfico de Columnas - {anio_seleccionado}")
     fig_bar = px.bar(
         df_dep.sort_values(anio_seleccionado, ascending=False),
@@ -133,10 +123,11 @@ if indicador == "Dependencia":
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
-    # Gráfico de Líneas
+    # ----- Gráfico de Líneas -----
     st.subheader("Evolución de Dependencia por Comuna (Serie Completa)")
     df_melt = df_dep.melt(id_vars=["Comuna"], value_vars=columnas_anos,
                           var_name="Año", value_name="Valor")
+
     fig_line = px.line(
         df_melt,
         x="Año",
@@ -156,37 +147,36 @@ if indicador == "Dependencia":
     )
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # ===== MAPA DE DEPENDENCIA POR COMUNA =====
-st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
-try:
-    gdf = gpd.read_file(r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp")
-    
-    # Merge usando cod_comuna y Cod_Comuna
-    gdf_merged = gdf.merge(df_dep, left_on='cod_comuna', right_on='Cod_Comuna', how='inner')
-    
-    # Filtrar por región seleccionada
-    gdf_merged_region = gdf_merged[gdf_merged['Codigo_Region'] == codigo_region].copy()
-    
-    # Renombrar la columna de comuna para Plotly
-    gdf_merged_region = gdf_merged_region.rename(columns={"Comuna_y": "Comuna"})
-    
-    # Graficar
-    fig_map = px.choropleth_mapbox(
-        gdf_merged_region,
-        geojson=gdf_merged_region.geometry.__geo_interface__,
-        locations=gdf_merged_region.index,
-        color=anio_seleccionado,
-        hover_name="Comuna",
-        hover_data={anio_seleccionado: ':.2f'},
-        mapbox_style="carto-positron",
-        center={"lat": gdf_merged_region.geometry.centroid.y.mean(),
-                "lon": gdf_merged_region.geometry.centroid.x.mean()},
-        zoom=6,
-        color_continuous_scale="Viridis"
-    )
-    fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-    st.plotly_chart(fig_map, use_container_width=True)
+    # ----- Mapa -----
+    st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
+    try:
+        gdf = gpd.read_file(r"F:/Users/sfarias/Documents/Curso Python/.vscode/dashboard-indicadores/Datos/MAPAS/comunas_tratadas/comunas_continental.shp")
+        
+        # Merge usando cod_comuna y Cod_Comuna
+        gdf_merged = gdf.merge(df_dep, left_on='cod_comuna', right_on='Cod_Comuna', how='inner')
+        
+        # Filtrar por región
+        gdf_merged_region = gdf_merged[gdf_merged['Codigo_Region'] == codigo_region].copy()
+        
+        # Renombrar columna de comuna para Plotly
+        gdf_merged_region = gdf_merged_region.rename(columns={"Comuna_y": "Comuna"})
+        
+        # Graficar mapa
+        fig_map = px.choropleth_mapbox(
+            gdf_merged_region,
+            geojson=gdf_merged_region.geometry.__geo_interface__,
+            locations=gdf_merged_region.index,
+            color=anio_seleccionado,
+            hover_name="Comuna",
+            hover_data={anio_seleccionado: ':.2f'},
+            mapbox_style="carto-positron",
+            center={"lat": gdf_merged_region.geometry.centroid.y.mean(),
+                    "lon": gdf_merged_region.geometry.centroid.x.mean()},
+            zoom=6,
+            color_continuous_scale="Viridis"
+        )
+        fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+        st.plotly_chart(fig_map, use_container_width=True)
 
-except Exception as e:
-    st.error(f"No se pudo generar el mapa: {e}")
-
+    except Exception as e:
+        st.error(f"No se pudo generar el mapa: {e}")
