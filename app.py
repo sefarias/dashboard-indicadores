@@ -89,19 +89,19 @@ df_filtrado = df[columnas_presentes].rename(columns=mapa_columnas)
 st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
 st.dataframe(df_filtrado.style.format(lambda x: format_number(x) if isinstance(x, float) else x), use_container_width=True)
 
-# ================= GRÁFICOS ESPECIALES PARA DEPENDENCIA =================
+# ============= GRÁFICOS Y MAPA PARA DEPENDENCIA =============
 if indicador == "Dependencia":
     columnas_anos = [col for col in df_filtrado.columns if col.startswith("Año ")]
     df_dep = df_filtrado.copy()
 
-    # Selección de año para gráfico de columnas en el flujo central
+    # --- Selección de año para gráfico de columnas en el flujo central ---
     anio_seleccionado = st.selectbox(
         "Selecciona el año para el gráfico de columnas",
         columnas_anos,
         index=columnas_anos.index("Año 2022") if "Año 2022" in columnas_anos else 0
     )
 
-    # ------------------ Gráfico de Columnas ------------------
+    # --- Gráfico de Columnas ---
     st.subheader(f"Gráfico de Columnas - {anio_seleccionado}")
     fig_bar = px.bar(
         df_dep.sort_values(anio_seleccionado, ascending=False),
@@ -124,11 +124,10 @@ if indicador == "Dependencia":
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
-    # ------------------ Gráfico de Líneas ------------------
+    # --- Gráfico de Líneas ---
     st.subheader("Evolución de Dependencia por Comuna (Serie Completa)")
     df_melt = df_dep.melt(id_vars=["Comuna"], value_vars=columnas_anos,
                           var_name="Año", value_name="Valor")
-
     fig_line = px.line(
         df_melt,
         x="Año",
@@ -148,31 +147,27 @@ if indicador == "Dependencia":
     )
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # ------------------ Mapa ------------------
+    # --- MAPA DE COMUNAS ---
     st.subheader(f"Mapa de Dependencia - {anio_seleccionado}")
+    shp_path = r"F:\Users\sfarias\Documents\Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
     try:
-        # Cargar shapefile de comunas
-        shp_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
         gdf = gpd.read_file(shp_path)
-
-        # Filtrar solo comunas de la región seleccionada
-        gdf_region = gdf[gdf["codregion"] == codigo_region]
-
-        # Merge con datos
-        df_dep_map = df_dep.copy()
-        df_dep_map.rename(columns={"Comuna": "Comuna", "cod_comuna": "cod_comuna"}, inplace=True)
-        gdf_merged = gdf_region.merge(df_dep_map, left_on="cod_comuna", right_on="cod_comuna")
-
-        # Generar mapa
+        # Filtrar por región actual
+        gdf_region = gdf[gdf['codregion'] == codigo_region]
+        # Añadir columna cod_comuna al df_dep para merge
+        df_dep_merge = df[['Nombre_comuna', 'cod_comuna']].rename(columns={'Nombre_comuna':'Comuna'})
+        df_map = df_dep.merge(df_dep_merge, on='Comuna', how='left')
+        # Merge con shapefile
+        gdf_merged = gdf_region.merge(df_map, left_on='cod_comuna', right_on='cod_comuna')
         fig_map = px.choropleth(
             gdf_merged,
-            geojson=gdf_merged.geometry.__geo_interface__,
+            geojson=gdf_merged.geometry,
             locations=gdf_merged.index,
             color=anio_seleccionado,
             hover_name="Comuna",
-            color_continuous_scale="Viridis",
-            labels={anio_seleccionado: "Valor (%)"},
-            title=f"Dependencia por Comuna - {anio_seleccionado}"
+            hover_data={anio_seleccionado:':.2f'},
+            labels={anio_seleccionado:'Valor (%)'},
+            color_continuous_scale="Viridis"
         )
         fig_map.update_geos(fitbounds="locations", visible=False)
         st.plotly_chart(fig_map, use_container_width=True)
