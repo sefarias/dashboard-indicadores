@@ -157,28 +157,36 @@ if indicador == "Dependencia":
     st.plotly_chart(fig_line, use_container_width=True)
 
     # ===== MAPA DE DEPENDENCIA POR COMUNA =====
-    st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
-    try:
-        gdf = gpd.read_file(r"F:/Users/sfarias/Documents/Curso Python/.vscode/dashboard-indicadores/Datos/MAPAS/comunas_tratadas/comunas_continental.shp")
-        # Merge usando cod_comuna y Cod_Comuna
-        gdf_merged = gdf.merge(df_dep, left_on='cod_comuna', right_on='Cod_Comuna', how='inner')
-        # Filtrar por región seleccionada
-        gdf_merged_region = gdf_merged[gdf_merged['Codigo_Region'] == codigo_region]
-        # Graficar
-        fig_map = px.choropleth_mapbox(
-            gdf_merged_region,
-            geojson=gdf_merged_region.geometry.__geo_interface__,
-            locations=gdf_merged_region.index,
-            color=anio_seleccionado,
-            hover_name="Comuna",
-            hover_data={anio_seleccionado: ':.2f'},
-            mapbox_style="carto-positron",
-            center={"lat": gdf_merged_region.geometry.centroid.y.mean(),
-                    "lon": gdf_merged_region.geometry.centroid.x.mean()},
-            zoom=6,
-            color_continuous_scale="Viridis"
-        )
-        fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-        st.plotly_chart(fig_map, use_container_width=True)
-    except Exception as e:
-        st.error(f"No se pudo generar el mapa: {e}")
+st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
+try:
+    gdf = gpd.read_file(r"F:/Users/sfarias/Documents/Curso Python/.vscode/dashboard-indicadores/Datos/MAPAS/comunas_tratadas/comunas_continental.shp")
+    
+    # Merge usando cod_comuna y Cod_Comuna
+    gdf_merged = gdf.merge(df_dep, left_on='cod_comuna', right_on='Cod_Comuna', how='inner')
+    
+    # Filtrar por región seleccionada
+    gdf_merged_region = gdf_merged[gdf_merged['Codigo_Region'] == codigo_region].copy()
+    
+    # Renombrar la columna de comuna para Plotly
+    gdf_merged_region = gdf_merged_region.rename(columns={"Comuna_y": "Comuna"})
+    
+    # Graficar
+    fig_map = px.choropleth_mapbox(
+        gdf_merged_region,
+        geojson=gdf_merged_region.geometry.__geo_interface__,
+        locations=gdf_merged_region.index,
+        color=anio_seleccionado,
+        hover_name="Comuna",
+        hover_data={anio_seleccionado: ':.2f'},
+        mapbox_style="carto-positron",
+        center={"lat": gdf_merged_region.geometry.centroid.y.mean(),
+                "lon": gdf_merged_region.geometry.centroid.x.mean()},
+        zoom=6,
+        color_continuous_scale="Viridis"
+    )
+    fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+    st.plotly_chart(fig_map, use_container_width=True)
+
+except Exception as e:
+    st.error(f"No se pudo generar el mapa: {e}")
+
