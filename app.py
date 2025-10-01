@@ -43,13 +43,13 @@ def obtener_mapeo_regiones(info):
             path = os.path.join(carpeta, archivo)
             try:
                 df_temp = pd.read_excel(path)
-                if "Codigo_Region" in df_temp.columns and "Nombre_Region" in df_temp.columns:
-                    regiones_list.append(df_temp[["Codigo_Region", "Nombre_Region"]])
+                if "codregion" in df_temp.columns and "Nombre_Region" in df_temp.columns:
+                    regiones_list.append(df_temp[["codregion.", "Nombre_Region"]])
             except Exception as e:
                 st.warning(f"Error leyendo {archivo}: {e}")
     if regiones_list:
         regiones_concat = pd.concat(regiones_list).drop_duplicates()
-        return dict(zip(regiones_concat["Nombre_Region"], regiones_concat["Codigo_Region"]))
+        return dict(zip(regiones_concat["Nombre_Region"], regiones_concat["codregion."]))
     return {}
 
 # Función para formatear números con coma y 2 decimales
@@ -69,10 +69,10 @@ if not mapeo_regiones:
     st.stop()
 
 nombre_region = st.sidebar.selectbox("Selecciona la región", sorted(mapeo_regiones.keys()))
-codigo_region = mapeo_regiones[nombre_region]
+codregion. = mapeo_regiones[nombre_region]
 
 # Leer archivo correspondiente
-archivo = os.path.join(info["carpeta"], f"{info['prefijo']}{codigo_region}.xlsx")
+archivo = os.path.join(info["carpeta"], f"{info['prefijo']}{codregion.}.xlsx")
 try:
     df = pd.read_excel(archivo)
 except FileNotFoundError:
@@ -86,7 +86,7 @@ columnas_mostrar = [
 ]
 columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
 df_filtrado = df[columnas_presentes].rename(columns=mapa_columnas)
-st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
+st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codregion.})")
 st.dataframe(df_filtrado.style.format(lambda x: format_number(x) if isinstance(x, float) else x), use_container_width=True)
 
 # ============= GRÁFICOS Y MAPA PARA DEPENDENCIA =============
@@ -153,7 +153,7 @@ if indicador == "Dependencia":
     try:
         gdf = gpd.read_file(shp_path)
         # Filtrar por región actual
-        gdf_region = gdf[gdf['codregion'] == codigo_region]
+        gdf_region = gdf[gdf['codregion'] == codregion.]
         # Añadir columna cod_comuna al df_dep para merge
         df_dep_merge = df[['Nombre_comuna', 'cod_comuna']].rename(columns={'Nombre_comuna':'Comuna'})
         df_map = df_dep.merge(df_dep_merge, on='Comuna', how='left')
