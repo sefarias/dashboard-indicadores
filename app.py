@@ -1,9 +1,8 @@
 import pandas as pd
 import streamlit as st
 import os
-import matplotlib.pyplot as plt
-import seaborn as sns
 import plotly.express as px
+import geopandas as gpd
 
 st.set_page_config(layout="wide")
 
@@ -57,7 +56,7 @@ def obtener_mapeo_regiones(info):
 def format_number(x):
     if pd.isna(x):
         return ""
-    return f"{x:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # Sidebar para seleccionar indicador y región
 indicador = st.sidebar.selectbox("Selecciona el indicador", list(indicadores.keys()))
@@ -95,9 +94,9 @@ if indicador == "Dependencia":
     columnas_anos = [col for col in df_filtrado.columns if col.startswith("Año ")]
     df_dep = df_filtrado.copy()
 
-    # --- Selección de año para gráfico de columnas en el flujo central ---
+    # --- Selección de año en el flujo central ---
     anio_seleccionado = st.selectbox(
-        "Selecciona el año para el gráfico de columnas",
+        "Selecciona el año para el gráfico de columnas y mapa",
         columnas_anos,
         index=columnas_anos.index("Año 2022") if "Año 2022" in columnas_anos else 0
     )
@@ -115,8 +114,7 @@ if indicador == "Dependencia":
     )
     fig_bar.update_traces(
         texttemplate=[format_number(v) for v in df_dep[anio_seleccionado]],
-        textposition='outside',
-        hovertemplate=[f"Comuna: {c}<br>Valor: {format_number(v)}" for c, v in zip(df_dep["Comuna"], df_dep[anio_seleccionado])]
+        textposition='outside'
     )
     fig_bar.update_layout(
         xaxis_tickangle=-90,
@@ -139,13 +137,43 @@ if indicador == "Dependencia":
         title="Evolución de la Dependencia por Comuna",
         custom_data=["Comuna", "Valor"]
     )
-
     fig_line.update_traces(
         mode="lines+markers",
-        hovertemplate="Comuna: %{customdata[0]}<br>Año: %{x}<br>Valor: %{customdata[1]:.1f} %"
+        hovertemplate="Comuna: %{customdata[0]}<br>Año: %{x}<br>Valor: %{customdata[1]:.2f} %"
     )
     fig_line.update_layout(
         yaxis=dict(title="Valor (%)", range=[0, 100]),
         hovermode="x unified"
     )
     st.plotly_chart(fig_line, use_container_width=True)
+
+    # ======== MAPA ========
+    st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
+
+    # Cargar shapefile de comunas
+    ruta_shp = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_continental.shp"
+    gdf_comunas = gpd.read_file(ruta_shp)
+
+    # Unificar formato de nombres de comuna
+    gdf_comunas["Comuna"] = gdf_comunas["Comuna"].str.upper()
+    df_dep["Comuna"] = df_dep["Comuna"].str.upper()
+
+    # Merge shapefile + datos
+    gdf_merged = gdf_comunas.merge(df_dep[["Comuna", anio_seleccionado]], on="Comuna", how="left")
+
+    # Graficar mapa con Plotly
+    fig_map = px.choropleth_mapbox(
+        gdf_merged,
+        geojson=gdf_merged.geometry,
+        locations=gdf_merged.index,
+        color=anio_seleccionado,
+        hover_name="Comuna",
+        hover_data={anio_seleccionado: True},
+        mapbox_style="carto-positron",
+        center={"lat": -33.45, "lon": -70.66},
+        zoom=4.2,
+        opacity=0.7,
+        color_continuous_scale="YlOrRd"
+    )
+    fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+    st.plotly_chart(fig_map, use_container_width=True)
