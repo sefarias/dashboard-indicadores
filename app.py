@@ -150,28 +150,27 @@ if indicador == "Dependencia":
     # ----- Mapa -----
     st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
     try:
+        # Leer shapefile
         gdf = gpd.read_file(r"F:/Users/sfarias/Documents/Curso Python/.vscode/dashboard-indicadores/Datos/MAPAS/comunas_tratadas/comunas_continental.shp")
         
-        # Merge usando cod_comuna y Cod_Comuna
+        # Merge usando cod_comuna del shapefile y Cod_Comuna del Excel
         gdf_merged = gdf.merge(df_dep, left_on='cod_comuna', right_on='Cod_Comuna', how='inner')
         
-        # Filtrar por región
-        gdf_merged_region = gdf_merged[gdf_merged['Codigo_Region'] == codigo_region].copy()
-        
-        # Renombrar columna de comuna para Plotly
-        gdf_merged_region = gdf_merged_region.rename(columns={"Comuna_y": "Comuna"})
-        
-        # Graficar mapa
+        # Filtrar por región seleccionada
+        gdf_merged = gdf_merged[gdf_merged['Codigo_Region'] == codigo_region].copy()
+
+        # Graficar mapa con Plotly
+        gdf_merged = gdf_merged.set_index('Cod_Comuna')
         fig_map = px.choropleth_mapbox(
-            gdf_merged_region,
-            geojson=gdf_merged_region.geometry.__geo_interface__,
-            locations=gdf_merged_region.index,
+            gdf_merged,
+            geojson=gdf_merged.geometry.__geo_interface__,
+            locations=gdf_merged.index,
             color=anio_seleccionado,
             hover_name="Comuna",
             hover_data={anio_seleccionado: ':.2f'},
             mapbox_style="carto-positron",
-            center={"lat": gdf_merged_region.geometry.centroid.y.mean(),
-                    "lon": gdf_merged_region.geometry.centroid.x.mean()},
+            center={"lat": gdf_merged.geometry.centroid.y.mean(),
+                    "lon": gdf_merged.geometry.centroid.x.mean()},
             zoom=6,
             color_continuous_scale="Viridis"
         )
