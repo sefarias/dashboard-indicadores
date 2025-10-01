@@ -159,7 +159,7 @@ if indicador == "Dependencia":
     # ===== MAPA DE DEPENDENCIA POR COMUNA =====
 st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
 try:
-    gdf = gpd.read_file(r"F:/Users/sfarias/Documents/Curso Python/.vscode/dashboard-indicadores/Datos/MAPAS/comunas_tratadas/comunas_continental.shp")
+    gdf = gpd.read_file(r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp")
     
     # Merge usando cod_comuna y Cod_Comuna
     gdf_merged = gdf.merge(df_dep, left_on='cod_comuna', right_on='Cod_Comuna', how='inner')
