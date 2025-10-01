@@ -121,64 +121,47 @@ if indicador == "Dependencia":
     fig_line.update_layout(yaxis=dict(title="Valor (%)", range=[0,100]), hovermode="x unified")
     st.plotly_chart(fig_line, use_container_width=True)
 
-# ================= Mapa de Dependencia =================
+# ================= Mapa Mejorado de Dependencia =================
 st.subheader("Mapa de Dependencia por Comuna (Continental)")
 
-# Leer shapefile continental
 shapefile_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
 if not os.path.exists(shapefile_path):
-    st.error("No se encontró el shapefile continental. Verifica la ruta.")
+    st.error("No se encontró el shapefile continental.")
 else:
     gdf = gpd.read_file(shapefile_path)
-
-    # Filtrar por la región seleccionada
     gdf_region = gdf[gdf['codregion'] == codregion]
-
-    # Merge con datos de dependencia
     df_merge = df_dep.copy()
-    if 'cod_comuna' not in gdf_region.columns:
-        st.error("El shapefile no tiene la columna 'cod_comuna'.")
-    else:
-        gdf_region = gdf_region.merge(df_merge, left_on='cod_comuna', right_on='cod_comuna')
+    gdf_region = gdf_region.merge(df_merge, left_on='cod_comuna', right_on='cod_comuna')
+    gdf_region = gdf_region.to_crs(epsg=4326)
 
-        # Reproyectar a lat/lon
-        gdf_region = gdf_region.to_crs(epsg=4326)
+    # Comprobar geometría vacía
+    n_empty = gdf_region.geometry.is_empty.sum()
+    if n_empty > 0:
+        st.warning(f"{n_empty} comunas sin geometría válida.")
 
-        # Comprobar geometría vacía
-        n_empty = gdf_region.geometry.is_empty.sum()
-        if n_empty > 0:
-            st.warning(f"{n_empty} comunas no tienen geometría válida y no se mostrarán.")
+    # Columna hover
+    hover_col = 'Comuna_y' if 'Comuna_y' in gdf_region.columns else 'Nombre_comuna'
 
-        # Determinar columna de hover
-        if 'Comuna_y' in gdf_region.columns:
-            hover_col = 'Comuna_y'
-        elif 'Nombre_comuna' in gdf_region.columns:
-            hover_col = 'Nombre_comuna'
-        else:
-            hover_col = 'cod_comuna'
+    # Rango de color según percentiles para mayor contraste
+    vmin = gdf_region[anio_seleccionado].quantile(0.05)
+    vmax = gdf_region[anio_seleccionado].quantile(0.95)
 
-        # Ajustar rango de color según los datos
-        min_val = gdf_region[anio_seleccionado].min()
-        max_val = gdf_region[anio_seleccionado].max()
+    fig_map = px.choropleth(
+        gdf_region,
+        geojson=gdf_region.__geo_interface__,
+        locations=gdf_region.index,
+        color=anio_seleccionado,
+        hover_name=hover_col,
+        projection="mercator",
+        color_continuous_scale="RdYlGn_r",  # rojo=alto, verde=bajo
+        range_color=(vmin, vmax)
+    )
 
-        # Crear choropleth
-        fig_map = px.choropleth(
-            gdf_region,
-            geojson=gdf_region.__geo_interface__,
-            locations=gdf_region.index,
-            color=anio_seleccionado,
-            hover_name=hover_col,
-            projection="mercator",
-            color_continuous_scale="Viridis",
-            range_color=(min_val, max_val)
-        )
+    fig_map.update_geos(fitbounds="locations", visible=False)
+    fig_map.update_layout(
+        margin={"r":0,"t":0,"l":0,"b":0},
+        coloraxis_colorbar=dict(title="Dependencia (%)"),
+        template="plotly_dark"  # estilo tipo dashboard
+    )
 
-        fig_map.update_geos(fitbounds="locations", visible=False)
-        fig_map.update_layout(
-            margin={"r":0,"t":0,"l":0,"b":0},
-            coloraxis_colorbar=dict(title="Dependencia (%)")
-        )
-
-        st.plotly_chart(fig_map, use_container_width=True)
-
-
+    st.plotly_chart(fig_map, use_container_width=True)
