@@ -147,7 +147,7 @@ if indicador == "Dependencia":
     st.subheader("Mapa de Dependencia por Comuna")
     try:
         # Cargar shapefile comunas
-        shp_path = r"F:\Users\sfarias\Documents\Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
+        shp_path = "F:/Users/sfarias/Documents/Python/.vscode/dashboard-indicadores/Datos/MAPAS/comunas_tratadas/comunas_continental.shp"
         gdf_comunas = gpd.read_file(shp_path)
         
         # Unir con DataFrame por Cod_Comuna
