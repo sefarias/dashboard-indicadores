@@ -120,32 +120,3 @@ if indicador == "Dependencia":
                            hovertemplate="Comuna: %{customdata[0]}<br>Año: %{x}<br>Valor: %{customdata[1]:.2f} %")
     fig_line.update_layout(yaxis=dict(title="Valor (%)", range=[0,100]), hovermode="x unified")
     st.plotly_chart(fig_line, use_container_width=True)
-
-   # ======= Mapa por comuna =======
-st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
-try:
-    shp_path = r"F:\Users\sfarias\Documents\Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
-    gdf = gpd.read_file(shp_path)
-
-    # Filtrar solo la región seleccionada
-    gdf_region = gdf[gdf["codregion"] == codigo_region]
-
-    # Merge con los datos de dependencia por cod_comuna
-    gdf_merge = gdf_region.merge(df_dep, left_on="cod_comuna", right_on="cod_comuna", how="left")
-
-    # Generar mapa
-    fig_map = px.choropleth(
-        gdf_merge,
-        geojson=gdf_merge.geometry,
-        locations=gdf_merge.index,
-        color=anio_seleccionado,
-        hover_name="Comuna",
-        projection="mercator",
-        labels={anio_seleccionado:"Valor (%)"},
-        color_continuous_scale="Viridis"
-    )
-    fig_map.update_geos(fitbounds="locations", visible=False)
-    st.plotly_chart(fig_map, use_container_width=True)
-
-except Exception as e:
-    st.error(f"No se pudo generar el mapa: {e}")
