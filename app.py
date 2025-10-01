@@ -26,12 +26,6 @@ mapa_columnas = {
     "YEAR_2021": "Año 2021",
     "YEAR_2022": "Año 2022",
     "YEAR_2023": "Año 2023",
-    "Hombre_2018": "Hombres 2018",
-    "Mujer_2018": "Mujeres 2018",
-    "Hombre_2022": "Hombres 2022",
-    "Mujer_2022": "Mujeres 2022",
-    "Brecha_2018": "Brecha 2018 (H-M)",
-    "Brecha_2022": "Brecha 2022 (H-M)"
 }
 
 # Función para obtener mapeo de regiones
@@ -43,65 +37,61 @@ def obtener_mapeo_regiones(info):
             path = os.path.join(carpeta, archivo)
             try:
                 df_temp = pd.read_excel(path)
-                if "codregion" in df_temp.columns and "Nombre_Region" in df_temp.columns:
-                    regiones_list.append(df_temp[["codregion", "Nombre_Region"]])
+                if "Codigo_Region" in df_temp.columns and "Nombre_Region" in df_temp.columns:
+                    regiones_list.append(df_temp[["Codigo_Region", "Nombre_Region"]])
             except Exception as e:
                 st.warning(f"Error leyendo {archivo}: {e}")
     if regiones_list:
         regiones_concat = pd.concat(regiones_list).drop_duplicates()
-        return dict(zip(regiones_concat["Nombre_Region"], regiones_concat["codregion"]))
+        return dict(zip(regiones_concat["Nombre_Region"], regiones_concat["Codigo_Region"]))
     return {}
 
-# Función para formatear números con coma y 2 decimales
+# Formato números
 def format_number(x):
     if pd.isna(x):
         return ""
     return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-# Sidebar para seleccionar indicador y región
+# Sidebar: indicador y región
 indicador = st.sidebar.selectbox("Selecciona el indicador", list(indicadores.keys()))
 info = indicadores[indicador]
 
-# Obtener nombres de regiones
 mapeo_regiones = obtener_mapeo_regiones(info)
 if not mapeo_regiones:
     st.error("No se pudo leer la lista de regiones.")
     st.stop()
 
 nombre_region = st.sidebar.selectbox("Selecciona la región", sorted(mapeo_regiones.keys()))
-codregion = mapeo_regiones[nombre_region]
+codigo_region = mapeo_regiones[nombre_region]
 
-# Leer archivo correspondiente
-archivo = os.path.join(info["carpeta"], f"{info['prefijo']}{codregion}.xlsx")
+# Leer archivo
+archivo = os.path.join(info["carpeta"], f"{info['prefijo']}{codigo_region}.xlsx")
 try:
     df = pd.read_excel(archivo)
 except FileNotFoundError:
     st.error(f"No se encontró el archivo para la región {nombre_region}.")
     st.stop()
 
-# Mostrar tabla original con nombres más claros y formato decimal
-columnas_mostrar = [
-    "Nombre_Region", "Nombre_Provincia", "Nombre_comuna", "Sexo",
-    "YEAR_2018", "YEAR_2019", "YEAR_2020", "YEAR_2021", "YEAR_2022", "YEAR_2023"
-]
+# Filtrar columnas y renombrar
+columnas_mostrar = ["Nombre_Region","Nombre_Provincia","Nombre_comuna","Sexo",
+                    "YEAR_2018","YEAR_2019","YEAR_2020","YEAR_2021","YEAR_2022","YEAR_2023","cod_comuna"]
 columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
 df_filtrado = df[columnas_presentes].rename(columns=mapa_columnas)
-st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codregion})")
-st.dataframe(df_filtrado.style.format(lambda x: format_number(x) if isinstance(x, float) else x), use_container_width=True)
 
-# ============= GRÁFICOS Y MAPA PARA DEPENDENCIA =============
+st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
+st.dataframe(df_filtrado.style.format(lambda x: format_number(x) if isinstance(x,float) else x), use_container_width=True)
+
+# ============ Dependencia: gráficos y mapa ============
 if indicador == "Dependencia":
     columnas_anos = [col for col in df_filtrado.columns if col.startswith("Año ")]
     df_dep = df_filtrado.copy()
 
-    # --- Selección de año para gráfico de columnas en el flujo central ---
-    anio_seleccionado = st.selectbox(
-        "Selecciona el año para el gráfico de columnas",
-        columnas_anos,
-        index=columnas_anos.index("Año 2022") if "Año 2022" in columnas_anos else 0
-    )
+    # Selección año para gráfico de columnas
+    anio_seleccionado = st.selectbox("Selecciona el año para el gráfico de columnas",
+                                     columnas_anos,
+                                     index=columnas_anos.index("Año 2022") if "Año 2022" in columnas_anos else 0)
 
-    # --- Gráfico de Columnas ---
+    # Gráfico de columnas
     st.subheader(f"Gráfico de Columnas - {anio_seleccionado}")
     fig_bar = px.bar(
         df_dep.sort_values(anio_seleccionado, ascending=False),
@@ -109,67 +99,35 @@ if indicador == "Dependencia":
         y=anio_seleccionado,
         color="Comuna",
         text=anio_seleccionado,
-        labels={"Comuna": "Comuna", anio_seleccionado: "Valor"},
+        labels={"Comuna":"Comuna", anio_seleccionado:"Valor"},
         title=f"Dependencia por Comuna - {anio_seleccionado}"
     )
     fig_bar.update_traces(
         texttemplate=[format_number(v) for v in df_dep[anio_seleccionado]],
         textposition='outside',
-        hovertemplate=[f"Comuna: {c}<br>Valor: {format_number(v)}" for c, v in zip(df_dep["Comuna"], df_dep[anio_seleccionado])]
+        hovertemplate=[f"Comuna: {c}<br>Valor: {format_number(v)}" for c,v in zip(df_dep["Comuna"], df_dep[anio_seleccionado])]
     )
-    fig_bar.update_layout(
-        xaxis_tickangle=-90,
-        showlegend=False,
-        yaxis=dict(title="Valor (%)", range=[0, 100])
-    )
+    fig_bar.update_layout(xaxis_tickangle=-90, showlegend=False, yaxis=dict(title="Valor (%)", range=[0,100]))
     st.plotly_chart(fig_bar, use_container_width=True)
 
-    # --- Gráfico de Líneas ---
+    # Gráfico de líneas serie completa
     st.subheader("Evolución de Dependencia por Comuna (Serie Completa)")
     df_melt = df_dep.melt(id_vars=["Comuna"], value_vars=columnas_anos,
                           var_name="Año", value_name="Valor")
-    fig_line = px.line(
-        df_melt,
-        x="Año",
-        y="Valor",
-        color="Comuna",
-        markers=True,
-        title="Evolución de la Dependencia por Comuna",
-        custom_data=["Comuna", "Valor"]
-    )
-    fig_line.update_traces(
-        mode="lines+markers",
-        hovertemplate="Comuna: %{customdata[0]}<br>Año: %{x}<br>Valor: %{customdata[1]:.2f} %"
-    )
-    fig_line.update_layout(
-        yaxis=dict(title="Valor (%)", range=[0, 100]),
-        hovermode="x unified"
-    )
+    fig_line = px.line(df_melt, x="Año", y="Valor", color="Comuna", markers=True, title="Evolución de la Dependencia por Comuna",
+                       custom_data=["Comuna","Valor"])
+    fig_line.update_traces(mode="lines+markers",
+                           hovertemplate="Comuna: %{customdata[0]}<br>Año: %{x}<br>Valor: %{customdata[1]:.2f} %")
+    fig_line.update_layout(yaxis=dict(title="Valor (%)", range=[0,100]), hovermode="x unified")
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # --- MAPA DE COMUNAS ---
-    st.subheader(f"Mapa de Dependencia - {anio_seleccionado}")
-    shp_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
+    # ======= Mapa por comuna =======
+    st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
     try:
+        shp_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
         gdf = gpd.read_file(shp_path)
-        # Filtrar por región actual
-        gdf_region = gdf[gdf['codregion'] == codregion]
-        # Añadir columna cod_comuna al df_dep para merge
-        df_dep_merge = df[['Nombre_comuna', 'cod_comuna']].rename(columns={'Nombre_comuna':'Comuna'})
-        df_map = df_dep.merge(df_dep_merge, on='Comuna', how='left')
-        # Merge con shapefile
-        gdf_merged = gdf_region.merge(df_map, left_on='cod_comuna', right_on='cod_comuna')
-        fig_map = px.choropleth(
-            gdf_merged,
-            geojson=gdf_merged.geometry,
-            locations=gdf_merged.index,
-            color=anio_seleccionado,
-            hover_name="Comuna",
-            hover_data={anio_seleccionado:':.2f'},
-            labels={anio_seleccionado:'Valor (%)'},
-            color_continuous_scale="Viridis"
-        )
-        fig_map.update_geos(fitbounds="locations", visible=False)
-        st.plotly_chart(fig_map, use_container_width=True)
-    except Exception as e:
-        st.error(f"No se pudo generar el mapa: {e}")
+
+        # Filtrar solo la región seleccionada
+        gdf_region = gdf[gdf["codregion"]==codigo_region]
+
+        # Merge con los datos de dependencia por cod_comuna
