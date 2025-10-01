@@ -121,58 +121,47 @@ if indicador == "Dependencia":
     fig_line.update_layout(yaxis=dict(title="Valor (%)", range=[0,100]), hovermode="x unified")
     st.plotly_chart(fig_line, use_container_width=True)
 
-        # ======= Mapa por comuna =======
-    st.subheader(f"Mapa de Dependencia por Comuna - Año {anio_seleccionado}")
-    try:
-        shp_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
-        gdf = gpd.read_file(shp_path)
+    # ======= Mapa por comuna =======
+st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
+try:
+    shp_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
+    gdf = gpd.read_file(shp_path)
 
-        # Filtrar solo la región seleccionada
-        gdf_region = gdf[gdf["codregion"] == codregion]
+    # Filtrar solo la región seleccionada
+    gdf_region = gdf[gdf["codregion"] == codregion]
 
-        # Merge con los datos de dependencia por cod_comuna
-        gdf_merge = gdf_region.merge(df_dep, on="cod_comuna", how="left")
+    # Merge con los datos de dependencia por cod_comuna
+    gdf_merge = gdf_region.merge(df_dep, on="cod_comuna", how="left")
 
-        # Unificar nombre de columna comuna
-        if "Comuna_x" in gdf_merge.columns:
-            gdf_merge.rename(columns={"Comuna_x": "Comuna"}, inplace=True)
-        elif "Comuna_y" in gdf_merge.columns:
-            gdf_merge.rename(columns={"Comuna_y": "Comuna"}, inplace=True)
+    # Asegurar columna comuna legible
+    if "Comuna_x" in gdf_merge.columns:
+        gdf_merge.rename(columns={"Comuna_x": "Comuna"}, inplace=True)
+    elif "Comuna_y" in gdf_merge.columns:
+        gdf_merge.rename(columns={"Comuna_y": "Comuna"}, inplace=True)
 
-        # Convertir a GeoJSON válido
-        geojson_data = gdf_merge.__geo_interface__
+    # Exportar a GeoJSON temporal
+    geojson_temp = "region_temp.geojson"
+    gdf_merge.to_file(geojson_temp, driver="GeoJSON")
 
-        # Mapa base
-        fig_map = px.choropleth(
-            gdf_merge,
-            geojson=geojson_data,
-            locations="cod_comuna",
-            featureidkey="properties.cod_comuna",  # <- enlaza GeoJSON con DataFrame
-            color=anio_seleccionado,
-            hover_name="Comuna",
-            projection="mercator",
-            labels={anio_seleccionado:"Valor (%)"},
-            color_continuous_scale="Viridis"
-        )
-        fig_map.update_geos(fitbounds="locations", visible=False)
+    import json
+    with open(geojson_temp, "r", encoding="utf-8") as f:
+        geojson_data = json.load(f)
 
-        # ======= Agregar etiquetas con centroides =======
-        gdf_merge["centroid"] = gdf_merge.geometry.centroid
-        gdf_merge["lon"] = gdf_merge.centroid.x
-        gdf_merge["lat"] = gdf_merge.centroid.y
-        gdf_merge["label"] = gdf_merge[anio_seleccionado].apply(lambda x: format_number(x) if pd.notna(x) else "")
+    # Generar mapa
+    fig_map = px.choropleth(
+        gdf_merge,
+        geojson=geojson_data,
+        locations="cod_comuna",                      # columna en DataFrame
+        featureidkey="properties.cod_comuna",        # columna en GeoJSON
+        color=anio_seleccionado,
+        hover_name="Comuna",
+        projection="mercator",
+        labels={anio_seleccionado:"Valor (%)"},
+        color_continuous_scale="Viridis"
+    )
+    fig_map.update_geos(fitbounds="locations", visible=False)
 
-        fig_map.add_scattergeo(
-            lon=gdf_merge["lon"],
-            lat=gdf_merge["lat"],
-            text=gdf_merge["label"],
-            mode="text",
-            textfont=dict(color="white", size=12, family="Arial Black"),
-            showlegend=False
-        )
+    st.plotly_chart(fig_map, use_container_width=True)
 
-        st.plotly_chart(fig_map, use_container_width=True)
-
-    except Exception as e:
-        st.error(f"No se pudo generar el mapa: {e}")
-
+except Exception as e:
+    st.error(f"No se pudo generar el mapa: {e}")
