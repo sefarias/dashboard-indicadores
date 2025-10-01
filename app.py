@@ -1,12 +1,12 @@
+import os
 import pandas as pd
 import streamlit as st
-import os
 import plotly.express as px
 import geopandas as gpd
 
 st.set_page_config(layout="wide")
 
-# ================== Diccionario de indicadores ==================
+# Diccionario de indicadores
 indicadores = {
     "Brechas de Ingresos": {"carpeta": "Datos/BRECHAS_ING", "prefijo": "Brechas_Ingresos_Region_"},
     "Brechas de Matrícula": {"carpeta": "Datos/BRECHAS_MAT", "prefijo": "Brechas_Matricula_Region_"},
@@ -14,7 +14,7 @@ indicadores = {
     "Dependencia": {"carpeta": "Datos/DEPENDENCIA", "prefijo": "Dependencia_Region_"}
 }
 
-# ================== Mapa de nombres de columnas ==================
+# Diccionario de nombres más legibles
 mapa_columnas = {
     "Nombre_Region": "Región",
     "Nombre_Provincia": "Provincia",
@@ -34,7 +34,7 @@ mapa_columnas = {
     "Brecha_2022": "Brecha 2022 (H-M)"
 }
 
-# ================== Funciones ==================
+# Función para obtener mapeo de regiones
 def obtener_mapeo_regiones(info):
     carpeta = info["carpeta"]
     regiones_list = []
@@ -52,12 +52,13 @@ def obtener_mapeo_regiones(info):
         return dict(zip(regiones_concat["Nombre_Region"], regiones_concat["Codigo_Region"]))
     return {}
 
+# Función para formatear números con coma y 2 decimales
 def format_number(x):
     if pd.isna(x):
         return ""
     return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-# ================== Sidebar ==================
+# Sidebar para seleccionar indicador y región
 indicador = st.sidebar.selectbox("Selecciona el indicador", list(indicadores.keys()))
 info = indicadores[indicador]
 
@@ -78,7 +79,7 @@ except FileNotFoundError:
     st.error(f"No se encontró el archivo para la región {nombre_region}.")
     st.stop()
 
-# ================== Tabla ==================
+# Mostrar tabla original con nombres más claros y formato decimal
 columnas_mostrar = [
     "Nombre_Region", "Nombre_Provincia", "Nombre_comuna", "Sexo",
     "YEAR_2018", "YEAR_2019", "YEAR_2020", "YEAR_2021", "YEAR_2022", "YEAR_2023"
@@ -88,19 +89,19 @@ df_filtrado = df[columnas_presentes].rename(columns=mapa_columnas)
 st.subheader(f"Datos seleccionados - {indicador} - {nombre_region} (Región {codigo_region})")
 st.dataframe(df_filtrado.style.format(lambda x: format_number(x) if isinstance(x, float) else x), use_container_width=True)
 
-# ================== Gráficos y Mapas para Dependencia ==================
+# ================= GRÁFICOS ESPECIALES PARA DEPENDENCIA =================
 if indicador == "Dependencia":
     columnas_anos = [col for col in df_filtrado.columns if col.startswith("Año ")]
     df_dep = df_filtrado.copy()
 
-    # --- Selección de año para gráfico de columnas ---
+    # Selección de año para gráfico de columnas en el flujo central
     anio_seleccionado = st.selectbox(
         "Selecciona el año para el gráfico de columnas",
         columnas_anos,
         index=columnas_anos.index("Año 2022") if "Año 2022" in columnas_anos else 0
     )
 
-    # ----- Gráfico de Columnas -----
+    # ------------------ Gráfico de Columnas ------------------
     st.subheader(f"Gráfico de Columnas - {anio_seleccionado}")
     fig_bar = px.bar(
         df_dep.sort_values(anio_seleccionado, ascending=False),
@@ -123,7 +124,7 @@ if indicador == "Dependencia":
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
-    # ----- Gráfico de Líneas -----
+    # ------------------ Gráfico de Líneas ------------------
     st.subheader("Evolución de Dependencia por Comuna (Serie Completa)")
     df_melt = df_dep.melt(id_vars=["Comuna"], value_vars=columnas_anos,
                           var_name="Año", value_name="Valor")
@@ -147,35 +148,33 @@ if indicador == "Dependencia":
     )
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # ----- Mapa -----
-    st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
+    # ------------------ Mapa ------------------
+    st.subheader(f"Mapa de Dependencia - {anio_seleccionado}")
     try:
-        # Leer shapefile
-        gdf = gpd.read_file(r"F:/Users/sfarias/Documents/Curso Python/.vscode/dashboard-indicadores/Datos/MAPAS/comunas_tratadas/comunas_continental.shp")
-        
-        # Merge usando cod_comuna del shapefile y Cod_Comuna del Excel
-        gdf_merged = gdf.merge(df_dep, left_on='cod_comuna', right_on='Cod_Comuna', how='inner')
-        
-        # Filtrar por región seleccionada
-        gdf_merged = gdf_merged[gdf_merged['Codigo_Region'] == codigo_region].copy()
+        # Cargar shapefile de comunas
+        shp_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
+        gdf = gpd.read_file(shp_path)
 
-        # Graficar mapa con Plotly
-        gdf_merged = gdf_merged.set_index('Cod_Comuna')
-        fig_map = px.choropleth_mapbox(
+        # Filtrar solo comunas de la región seleccionada
+        gdf_region = gdf[gdf["codregion"] == codigo_region]
+
+        # Merge con datos
+        df_dep_map = df_dep.copy()
+        df_dep_map.rename(columns={"Comuna": "Comuna", "cod_comuna": "cod_comuna"}, inplace=True)
+        gdf_merged = gdf_region.merge(df_dep_map, left_on="cod_comuna", right_on="cod_comuna")
+
+        # Generar mapa
+        fig_map = px.choropleth(
             gdf_merged,
             geojson=gdf_merged.geometry.__geo_interface__,
             locations=gdf_merged.index,
             color=anio_seleccionado,
             hover_name="Comuna",
-            hover_data={anio_seleccionado: ':.2f'},
-            mapbox_style="carto-positron",
-            center={"lat": gdf_merged.geometry.centroid.y.mean(),
-                    "lon": gdf_merged.geometry.centroid.x.mean()},
-            zoom=6,
-            color_continuous_scale="Viridis"
+            color_continuous_scale="Viridis",
+            labels={anio_seleccionado: "Valor (%)"},
+            title=f"Dependencia por Comuna - {anio_seleccionado}"
         )
-        fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+        fig_map.update_geos(fitbounds="locations", visible=False)
         st.plotly_chart(fig_map, use_container_width=True)
-
     except Exception as e:
         st.error(f"No se pudo generar el mapa: {e}")
