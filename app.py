@@ -127,33 +127,30 @@ if indicador == "Dependencia":
         shp_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
         gdf = gpd.read_file(shp_path)
 
-        # Reproyectar a EPSG:4326
-        if gdf.crs is not None and gdf.crs.to_epsg() != 4326:
-            gdf = gdf.to_crs(epsg=4326)
-
         # Filtrar solo la región seleccionada
         gdf_region = gdf[gdf["codregion"] == codregion]
 
         # Merge con los datos de dependencia por cod_comuna
         gdf_merge = gdf_region.merge(df_dep, on="cod_comuna", how="left")
 
-        # Calcular centroide de la región
-        minx, miny, maxx, maxy = gdf_region.total_bounds
-        center = {"lat": (miny + maxy) / 2, "lon": (minx + maxx) / 2}
+        # Unificar nombre de columna comuna
+        if "Comuna_x" in gdf_merge.columns:
+            gdf_merge.rename(columns={"Comuna_x": "Comuna"}, inplace=True)
+        elif "Comuna_y" in gdf_merge.columns:
+            gdf_merge.rename(columns={"Comuna_y": "Comuna"}, inplace=True)
 
         # Generar mapa
-        fig_map = px.choropleth_mapbox(
+        fig_map = px.choropleth(
             gdf_merge,
             geojson=gdf_merge.geometry,
             locations=gdf_merge.index,
             color=anio_seleccionado,
             hover_name="Comuna",
-            mapbox_style="carto-positron",
-            center=center,
-            zoom=7,
-            opacity=0.7,
-            labels={anio_seleccionado:"Valor (%)"}
+            projection="mercator",
+            labels={anio_seleccionado:"Valor (%)"},
+            color_continuous_scale="Viridis"
         )
+        fig_map.update_geos(fitbounds="locations", visible=False)
         st.plotly_chart(fig_map, use_container_width=True)
 
     except Exception as e:
