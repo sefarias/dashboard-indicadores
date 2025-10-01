@@ -151,7 +151,7 @@ if indicador == "Dependencia":
     # --- MAPA DE COMUNAS ---
     st.subheader(f"Mapa de Dependencia por Comuna - {anio_seleccionado}")
     try:
-        shp_path = r"F:/Users/sfarias/Documents/Python/.vscode/dashboard-indicadores/Datos/MAPAS/comunas_tratadas/comunas_continental.shp"
+        shp_path = r"F:/Users/sfarias/Documents/Curso Python/.vscode/dashboard-indicadores/Datos/MAPAS/comunas_tratadas/comunas_continental.shp"
         gdf_comunas = gpd.read_file(shp_path)
 
         # Filtrar por región
