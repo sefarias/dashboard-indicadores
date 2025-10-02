@@ -125,51 +125,72 @@ if indicador == "Dependencia":
     fig_line.update_layout(yaxis=dict(title="Valor (%)", range=[0,100]), hovermode="x unified")
     st.plotly_chart(fig_line, use_container_width=True)
 
-    # ================= Mapa Interactivo de Dependencia =================
-    st.subheader("Mapa Interactivo de Dependencia por Comuna (Continental)")
+   
+# ================= Mapa Interactivo de Dependencia =================
+st.subheader("Mapa Interactivo de Dependencia por Comuna (Continental)")
 
-    shapefile_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
-    if not os.path.exists(shapefile_path):
-        st.error("No se encontró el shapefile continental.")
-    else:
-        gdf = gpd.read_file(shapefile_path)
-        gdf_region = gdf[gdf['codregion'] == codregion]
-        df_merge = df_dep.copy()
-        gdf_region = gdf_region.merge(df_merge, left_on='cod_comuna', right_on='cod_comuna')
-        gdf_region = gdf_region.to_crs(epsg=4326)
+shapefile_path = r"F:\Users\sfarias\Documents\Curso Python\.vscode\dashboard-indicadores\Datos\MAPAS\comunas_tratadas\comunas_continental.shp"
+if not os.path.exists(shapefile_path):
+    st.error("No se encontró el shapefile continental.")
+else:
+    gdf = gpd.read_file(shapefile_path)
+    gdf_region = gdf[gdf['codregion'] == codregion]
+    df_merge = df_dep.copy()
+    gdf_region = gdf_region.merge(df_merge, left_on='cod_comuna', right_on='cod_comuna')
+    gdf_region = gdf_region.to_crs(epsg=4326)
 
-        # Slider de año
-        columnas_anos = [col for col in df_dep.columns if col.startswith("Año ")]
-        anio_seleccionado = st.slider("Selecciona el año", min_value=2018, max_value=2023, value=2022, step=1)
-        col_name = f"Año {anio_seleccionado}"
+    # Comprobar geometría vacía
+    n_empty = gdf_region.geometry.is_empty.sum()
+    if n_empty > 0:
+        st.warning(f"{n_empty} comunas sin geometría válida.")
 
-        # Rango de color usando percentiles para contraste
-        vmin = gdf_region[col_name].quantile(0.05)
-        vmax = gdf_region[col_name].quantile(0.95)
+    # Columna hover
+    hover_col = 'Comuna_y' if 'Comuna_y' in gdf_region.columns else 'Nombre_comuna'
 
-        # Hover personalizado
-        hover_text = [
-            f"{c}<br>{col_name}: {v:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".") + " %"
-            for c, v in zip(gdf_region["Comuna"], gdf_region[col_name])
-        ]
+    # Slider de año
+    columnas_anos = [col for col in df_dep.columns if col.startswith("Año ")]
+    anio_seleccionado = st.slider(
+        "Selecciona el año",
+        min_value=2018,
+        max_value=2023,
+        value=2022,
+        step=1
+    )
+    col_name = f"Año {anio_seleccionado}"
 
-        fig_map = px.choropleth(
-            gdf_region,
-            geojson=gdf_region.__geo_interface__,
-            locations=gdf_region.index,
-            color=col_name,
-            hover_name="Comuna",
-            hover_data={col_name: False},
-            projection="mercator",
-            color_continuous_scale="RdYlGn_r",
-            range_color=(vmin, vmax),
-            custom_data=[hover_text]
-        )
-        fig_map.update_traces(hovertemplate="%{customdata[0]}<extra></extra>")
-        fig_map.update_geos(fitbounds="locations", visible=False)
-        fig_map.update_layout(
-            margin={"r":0,"t":0,"l":0,"b":0},
-            coloraxis_colorbar=dict(title="Dependencia (%)"),
-            template="plotly_dark"
-        )
-        st.plotly_chart(fig_map, use_container_width=True)
+    # Rango de color usando percentiles para contraste
+    vmin = gdf_region[col_name].quantile(0.05)
+    vmax = gdf_region[col_name].quantile(0.95)
+
+    # Formatear los valores para hover con 1 decimal y coma
+    hover_text = [
+        f"{c}<br>{col_name}: {v:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        for c, v in zip(gdf_region[hover_col], gdf_region[col_name])
+    ]
+
+    fig_map = px.choropleth(
+        gdf_region,
+        geojson=gdf_region.__geo_interface__,
+        locations=gdf_region.index,
+        color=col_name,
+        hover_name=hover_col,
+        hover_data={col_name: False},  # ocultamos el valor duplicado
+        projection="mercator",
+        color_continuous_scale="RdYlGn_r",
+        range_color=(vmin, vmax),
+        custom_data=[hover_text]  # usamos custom_data para hover personalizado
+    )
+
+    # Actualizar hover para usar nuestro texto formateado
+    fig_map.update_traces(
+        hovertemplate="%{customdata[0]}<extra></extra>"
+    )
+
+    fig_map.update_geos(fitbounds="locations", visible=False)
+    fig_map.update_layout(
+        margin={"r":0,"t":0,"l":0,"b":0},
+        coloraxis_colorbar=dict(title="Dependencia (%)"),
+        template="plotly_dark"
+    )
+
+    st.plotly_chart(fig_map, use_container_width=True)
