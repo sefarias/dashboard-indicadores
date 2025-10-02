@@ -104,9 +104,9 @@ if indicador == "Dependencia":
         custom_data=["Comuna", anio_seleccionado]
     )
     fig_bar.update_traces(
-        texttemplate="%{y:.1f}".replace(".", ","),   # 1 decimal con coma
+        texttemplate="%{y:,.1f}".replace(".", ","),   # 1 decimal con coma
         textposition='outside',
-        hovertemplate="Comuna: %{customdata[0]}<br>Valor: %{customdata[1]:.1f}".replace(".", ",") + " %"
+        hovertemplate="Comuna: %{customdata[0]}<br>Valor: %{customdata[1]:,.1f}".replace(".", ",") + " %"
     )
     fig_bar.update_layout(xaxis_tickangle=-90, showlegend=False, yaxis=dict(title="Valor (%)", range=[0,100]))
     st.plotly_chart(fig_bar, use_container_width=True)
