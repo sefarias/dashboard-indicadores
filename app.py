@@ -99,31 +99,49 @@ if indicador == "Dependencia":
         x="Comuna",
         y=anio_seleccionado,
         color="Comuna",
-        labels={"Comuna":"Comuna", anio_seleccionado:"Valor"},
+        labels={"Comuna": "Comuna", anio_seleccionado: "Valor"},
         title=f"Dependencia por Comuna - {anio_seleccionado}",
         custom_data=["Comuna", anio_seleccionado]
     )
     fig_bar.update_traces(
-        texttemplate="%{y:,.1f}".replace(".", ","),   # 1 decimal con coma
+        texttemplate="%{y:.1f}".replace(".", ","),  # 1 decimal con coma
         textposition='outside',
-        hovertemplate="Comuna: %{customdata[0]}<br>Valor: %{customdata[1]:,.1f}".replace(".", ",") + " %"
+        hovertemplate="Comuna: %{customdata[0]}<br>Valor: %{customdata[1]:.1f}".replace(".", ",") + " %"
     )
-    fig_bar.update_layout(xaxis_tickangle=-90, showlegend=False, yaxis=dict(title="Valor (%)", range=[0,100]))
+    fig_bar.update_layout(
+        xaxis_tickangle=-90,
+        showlegend=False,
+        yaxis=dict(title="Valor (%)", range=[0, 100])
+    )
     st.plotly_chart(fig_bar, use_container_width=True)
 
     # Gráfico de líneas serie completa
     st.subheader("Evolución de Dependencia por Comuna (Serie Completa)")
-    df_melt = df_dep.melt(id_vars=["Comuna"], value_vars=columnas_anos,
-                          var_name="Año", value_name="Valor")
-    fig_line = px.line(df_melt, x="Año", y="Valor", color="Comuna", markers=True,
-                       title="Evolución de la Dependencia por Comuna",
-                       custom_data=["Comuna","Valor"])
+    df_melt = df_dep.melt(
+        id_vars=["Comuna"],
+        value_vars=columnas_anos,
+        var_name="Año",
+        value_name="Valor"
+    )
+    fig_line = px.line(
+        df_melt,
+        x="Año",
+        y="Valor",
+        color="Comuna",
+        markers=True,
+        title="Evolución de la Dependencia por Comuna",
+        custom_data=["Comuna", "Valor"]
+    )
     fig_line.update_traces(
         mode="lines+markers",
         hovertemplate="Comuna: %{customdata[0]}<br>Año: %{x}<br>Valor: %{customdata[1]:.1f}".replace(".", ",") + " %"
     )
-    fig_line.update_layout(yaxis=dict(title="Valor (%)", range=[0,100]), hovermode="x unified")
+    fig_line.update_layout(
+        yaxis=dict(title="Valor (%)", range=[0, 100]),
+        hovermode="x unified"
+    )
     st.plotly_chart(fig_line, use_container_width=True)
+
 
    
 # ================= Mapa Interactivo de Dependencia =================
