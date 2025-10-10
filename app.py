@@ -16,4 +16,5 @@ DASHBOARDS = {
     "Dependencia": dependencia
 }
 
-DASHBOARDS[opcion].mostrar_dashboard()
+if opcion in DASHBOARDS:
+    DASHBOARDS[opcion].mostrar_dashboard()
